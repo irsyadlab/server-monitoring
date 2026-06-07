@@ -1,11 +1,11 @@
 {
-  "name": "servermon",
+  "name": "@irsyadulibad/servermon",
   "version": "1.0.0",
   "description": "Lightweight server monitoring daemon — collects system metrics and sends structured reports to Telegram. Built with Bun + TypeScript.",
   "module": "index.ts",
   "type": "module",
   "bin": {
-    "servermon": "./cli.ts"
+    "servermon": "./cli.js"
   },
   "private": false,
   "scripts": {
