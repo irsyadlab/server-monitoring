@@ -65,7 +65,7 @@ async function interactiveSetup(): Promise<void> {
   console.log(`\n✅ Config saved!`);
   console.log(`   📁 ${configPath()}`);
   console.log(`   ⏱  Interval: ${interval}s (${label})`);
-  console.log(`\n📡 Next step: DM your bot once on Telegram, then re-run \`servermon\`.`);
+  console.log(`\n📡 Next step: DM your bot once on Telegram, then run \`servermon\`.`);
 }
 
 async function main() {

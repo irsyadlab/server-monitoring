@@ -51,12 +51,33 @@ export async function start() {
 
   if (!chatId) {
     console.log("🔍 TELEGRAM_CHAT_ID not set — auto-detecting...");
-    const detected = await autoDetectChatId(botToken);
+    let detected = await autoDetectChatId(botToken);
+
     if (!detected) {
-      console.error("❌ No recent chats found. DM your bot first, then re-run.");
-      console.error("   Or set TELEGRAM_CHAT_ID in ~/.irsyadulibad/servermon/config.json");
-      process.exit(1);
+      console.log("⏳ Waiting for you to DM the bot on Telegram...");
+      console.log("   (polling every 10s — no restart needed)");
+      console.log();
+
+      const POLL_INTERVAL_MS = 10_000;
+      const POLL_TIMEOUT_MS = 15 * 60_000; // 15 menit timeout
+      const startPoll = Date.now();
+
+      while (!detected) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        detected = await autoDetectChatId(botToken);
+
+        if (Date.now() - startPoll > POLL_TIMEOUT_MS) {
+          console.error(
+            "❌ Timeout (15m) — no message received. DM the bot, then re-run `servermon`."
+          );
+          console.error(
+            "   Or set TELEGRAM_CHAT_ID manually in ~/.irsyadulibad/servermon/config.json"
+          );
+          process.exit(1);
+        }
+      }
     }
+
     chatId = detected;
     // Persist to config
     try {
