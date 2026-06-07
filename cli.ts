@@ -14,6 +14,97 @@ function banner() {
   console.log();
 }
 
+// ─────────────────────────────────────
+//  systemd auto‑setup
+// ─────────────────────────────────────
+async function setupSystemd(): Promise<void> {
+  banner();
+  console.log("⚙️  Systemd Service Setup\n");
+
+  const config = await loadConfig();
+  if (!config) {
+    console.error("❌ No config found. Run `servermon` first to set up.");
+    console.error("   Then try: servermon --install-service");
+    process.exit(1);
+  }
+
+  // Resolve paths
+  const bunPath = Bun.which("bun");
+  if (!bunPath) {
+    console.error("❌ bun not found in PATH");
+    process.exit(1);
+  }
+
+  const servermonPath = Bun.which("servermon");
+  if (!servermonPath) {
+    console.error("❌ servermon binary not found.");
+    console.error("   Install with: bun i -g @irsyadulibad/servermon");
+    process.exit(1);
+  }
+
+  console.log(`🔍 bun:       ${bunPath}`);
+  console.log(`🔍 servermon: ${servermonPath}`);
+  console.log(`📁 Config:    ${configPath()}`);
+  console.log();
+
+  // Create systemd user directory
+  const home = process.env.HOME ?? "~";
+  const systemdDir = `${home}/.config/systemd/user`;
+  await Bun.write(`${systemdDir}/.gitkeep`, ""); // ensure dir exists
+  try { await (Bun as any).mkdir?.(systemdDir, { recursive: true }); } catch { /* Bun.mkdir may not exist; fs fallback */ }
+  try { await import("node:fs").then(m => m.mkdirSync(systemdDir, { recursive: true })); } catch {}
+
+  const serviceFile = `${systemdDir}/servermon.service`;
+  const serviceContent = `[Unit]
+Description=Server Monitor — Telegram system health reports
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=${servermonPath}
+Restart=always
+RestartSec=30
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target
+`;
+
+  await Bun.write(serviceFile, serviceContent);
+  console.log(`📄 Written: ${serviceFile}`);
+  console.log();
+
+  // systemctl commands
+  const cmds = [
+    ["systemctl", "--user", "daemon-reload"],
+    ["systemctl", "--user", "enable", "servermon.service"],
+    ["systemctl", "--user", "start", "servermon.service"],
+    ["systemctl", "--user", "status", "servermon.service", "--no-pager", "-l"],
+  ];
+
+  for (const cmd of cmds) {
+    console.log(`🏃 ${cmd.join(" ")}`);
+    const proc = Bun.spawnSync({ cmd, stdout: "pipe", stderr: "pipe" });
+    const out = new TextDecoder().decode(proc.stdout);
+    const err = new TextDecoder().decode(proc.stderr);
+    if (out) console.log(out);
+    if (err && proc.exitCode !== 0) console.error(err);
+  }
+
+  console.log();
+  console.log("✅ Systemd service installed!");
+  console.log();
+  console.log("📌 For auto-start at boot, enable lingering:");
+  console.log(`   loginctl enable-linger`);
+  console.log();
+  console.log("📋 Useful commands:");
+  console.log("   systemctl --user status servermon    # check status");
+  console.log("   systemctl --user stop servermon      # stop daemon");
+  console.log("   systemctl --user restart servermon   # restart");
+  console.log("   journalctl --user -u servermon -f    # watch logs");
+}
+
 async function interactiveSetup(): Promise<void> {
   console.log("🖥  Server Monitor — First Time Setup");
   console.log(`   Config will be saved to: ${configDir()}\n`);
@@ -69,6 +160,12 @@ async function interactiveSetup(): Promise<void> {
 }
 
 async function main() {
+  // --- systemd setup mode ---
+  if (process.argv.includes("--setup-systemd") || process.argv.includes("--install-service")) {
+    await setupSystemd();
+    return;
+  }
+
   banner();
 
   const config = await loadConfig();

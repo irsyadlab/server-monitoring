@@ -59,22 +59,10 @@ export async function start() {
       console.log();
 
       const POLL_INTERVAL_MS = 10_000;
-      const POLL_TIMEOUT_MS = 15 * 60_000; // 15 menit timeout
-      const startPoll = Date.now();
 
       while (!detected) {
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
         detected = await autoDetectChatId(botToken);
-
-        if (Date.now() - startPoll > POLL_TIMEOUT_MS) {
-          console.error(
-            "❌ Timeout (15m) — no message received. DM the bot, then re-run `servermon`."
-          );
-          console.error(
-            "   Or set TELEGRAM_CHAT_ID manually in ~/.irsyadulibad/servermon/config.json"
-          );
-          process.exit(1);
-        }
       }
     }
 
