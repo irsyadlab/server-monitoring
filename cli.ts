@@ -62,7 +62,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${servermonPath}
+ExecStart=${servermonPath} start
 Restart=always
 RestartSec=30
 Environment=NODE_ENV=production
@@ -160,34 +160,58 @@ async function interactiveSetup(): Promise<void> {
 }
 
 async function main() {
-  // --- systemd setup mode ---
-  if (process.argv.includes("--setup-systemd") || process.argv.includes("--install-service")) {
+  const cmd = process.argv[2];
+
+  // --- subcommand routing ---
+  if (cmd === "setup") {
+    banner();
+    await interactiveSetup();
+    return;
+  }
+
+  if (cmd === "start") {
+    banner();
+    const config = await loadConfig();
+    if (!config) {
+      console.error("❌ No config found. Run `servermon setup` first.");
+      process.exit(1);
+    }
+    process.env["TELEGRAM_BOT_TOKEN"] = config.token;
+    process.env["MONITOR_INTERVAL"] = String(config.interval);
+    if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
+
+    console.log(`📁 Config: ${configPath()}`);
+    console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
+    if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
+    console.log();
+
+    const { start } = await import("./index.ts");
+    await start();
+    return;
+  }
+
+  if (cmd === "install-service" || cmd === "--install-service" || cmd === "--setup-systemd") {
     await setupSystemd();
     return;
   }
 
-  banner();
-
-  const config = await loadConfig();
-
-  if (!config) {
-    await interactiveSetup();
-    process.exit(0);
-  }
-
-  // Push config into env for the daemon
-  process.env["TELEGRAM_BOT_TOKEN"] = config.token;
-  process.env["MONITOR_INTERVAL"] = String(config.interval);
-  if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
-
-  console.log(`📁 Config: ${configPath()}`);
-  console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
-  if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
+  // --- no/invalid subcommand → help ---
+  console.log("╔══════════════════════════════════════╗");
+  console.log("║     🖥  SERVER MONITOR DAEMON  🖥     ║");
+  console.log("║     Telegram  •  Bun  •  TypeScript  ║");
+  console.log("╚══════════════════════════════════════╝");
   console.log();
-
-  // Start the daemon
-  const { start } = await import("./index.ts");
-  await start();
+  console.log("Usage:  servermon <command>");
+  console.log();
+  console.log("Commands:");
+  console.log("  setup            First-time setup (bot token + interval)");
+  console.log("  start            Start the monitoring daemon");
+  console.log("  install-service  Install as systemd user service");
+  console.log();
+  console.log("Examples:");
+  console.log("  servermon setup");
+  console.log("  servermon start");
+  console.log("  servermon install-service");
 }
 
 main().catch((err) => {
