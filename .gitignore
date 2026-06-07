@@ -4,3 +4,4 @@ node_modules/
 server-monitor
 dist/
 .irsyadulibad/
+.npmrc
