@@ -33,7 +33,7 @@ Each report is color-coded with 🟢🟡🔴 health indicators and visual bar ch
 ### Install globally
 
 ```bash
-bun i -g github:irsyadulibad/servermon
+bun i -g @irsyadulibad/servermon
 ```
 
 ### First run — interactive setup
