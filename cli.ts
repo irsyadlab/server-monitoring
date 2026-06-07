@@ -29,14 +29,42 @@ async function interactiveSetup(): Promise<void> {
     process.exit(1);
   }
 
-  const intervalRaw =
-    prompt("⏱  Report interval in seconds (default 300 = 5 min): ")?.trim() || "300";
-  const interval = Math.max(30, parseInt(intervalRaw) || 300);
+  console.log();
+  console.log("⏱  Choose report interval:");
+  console.log("   1. Every 5 minutes");
+  console.log("   2. Every 1 hour");
+  console.log("   3. Every 3 hours");
+  console.log("   4. Every 6 hours");
+  console.log("   5. Every 12 hours");
+  console.log("   6. Custom (in seconds)");
+
+  const choice = prompt("   Pick [1-6] (default: 1): ")?.trim() || "1";
+
+  const intervals: Record<string, number> = {
+    "1": 300,
+    "2": 3600,
+    "3": 10800,
+    "4": 21600,
+    "5": 43200,
+  };
+
+  let interval: number;
+  if (choice === "6") {
+    const custom = prompt("   Enter interval in seconds: ")?.trim();
+    interval = Math.max(30, parseInt(custom || "300") || 300);
+  } else {
+    interval = intervals[choice] ?? 300;
+  }
+
+  const label =
+    interval >= 3600
+      ? `${(interval / 3600).toFixed(0)} hour(s)`
+      : `${(interval / 60).toFixed(0)} min`;
 
   await saveConfig({ token, interval });
   console.log(`\n✅ Config saved!`);
   console.log(`   📁 ${configPath()}`);
-  console.log(`   ⏱  Interval: ${interval}s (${(interval / 60).toFixed(0)} min)`);
+  console.log(`   ⏱  Interval: ${interval}s (${label})`);
   console.log(`\n📡 Next step: DM your bot once on Telegram, then re-run \`servermon\`.`);
 }
 
