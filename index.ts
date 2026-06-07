@@ -38,7 +38,10 @@ async function autoDetectChatId(token: string): Promise<string | null> {
     // Pick first (most recent) chat ID
     const id = [...chatIds][0]!;
     const chatInfo = data.result.find(
-      (u: any) => String(u.message?.chat?.id || u.channel_post?.chat?.id) === id
+      (u: {
+        message?: { chat?: { id: number; title?: string; first_name?: string } };
+        channel_post?: { chat?: { id: number; title?: string } };
+      }) => String(u.message?.chat?.id || u.channel_post?.chat?.id) === id
     );
     const chatName =
       chatInfo?.message?.chat?.title ||
@@ -97,5 +100,11 @@ await tick();
 // Loop
 setInterval(tick, intervalSec * 1000);
 
-process.on("SIGINT", () => { console.log("\n👋 Shutting down..."); process.exit(0); });
-process.on("SIGTERM", () => { console.log("\n👋 Shutting down..."); process.exit(0); });
+process.on("SIGINT", () => {
+  console.log("\n👋 Shutting down...");
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  console.log("\n👋 Shutting down...");
+  process.exit(0);
+});

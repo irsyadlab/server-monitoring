@@ -26,7 +26,7 @@ export interface DiskInfo {
 }
 
 export interface NetworkMetrics {
-  rxRate: number;   // bytes/sec
+  rxRate: number; // bytes/sec
   txRate: number;
   rxTotal: number;
   txTotal: number;
@@ -72,14 +72,16 @@ function parseDfLine(line: string): DiskInfo | null {
 
 async function readNetDev(): Promise<{ rx: number; tx: number }> {
   const data = await exec("cat /proc/net/dev 2>/dev/null");
-  let rx = 0, tx = 0;
+  let rx = 0,
+    tx = 0;
   for (const line of data.split("\n")) {
     if (!line.includes(":")) continue;
     const ifname = line.split(":")[0]!.trim();
     // Skip loopback
     if (ifname === "lo") continue;
     // Skip veth, docker
-    if (ifname.startsWith("veth") || ifname.startsWith("docker") || ifname.startsWith("br-")) continue;
+    if (ifname.startsWith("veth") || ifname.startsWith("docker") || ifname.startsWith("br-"))
+      continue;
     const parts = line.split(":")[1]!.trim().split(/\s+/);
     rx += parseInt(parts[0]!) || 0;
     tx += parseInt(parts[8]!) || 0;
@@ -163,7 +165,9 @@ export async function collectMetrics(): Promise<SystemMetrics> {
   const txRate = Math.max(0, net2.tx - net1.tx);
 
   // --- top processes ---
-  const topOutput = await exec("ps -eo pid,comm,pcpu,pmem --sort=-pcpu --no-headers 2>/dev/null | head -5");
+  const topOutput = await exec(
+    "ps -eo pid,comm,pcpu,pmem --sort=-pcpu --no-headers 2>/dev/null | head -5"
+  );
   const topProcs: ProcInfo[] = topOutput
     .split("\n")
     .filter(Boolean)

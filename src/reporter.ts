@@ -62,8 +62,12 @@ export function formatReportHTML(m: SystemMetrics): string {
   // ── Disk card ──
   const disks = [`<b>💾 DISK</b>`];
   for (const d of m.disks) {
-    disks.push(`   <code>${esc(d.mount)}</code>  <code>${pad(d.usagePercent, 0)}%</code>   ${bar(d.usagePercent)}`);
-    disks.push(`    └ <code>${esc(formatBytes(d.used))}</code> / <code>${esc(formatBytes(d.total))}</code>`);
+    disks.push(
+      `   <code>${esc(d.mount)}</code>  <code>${pad(d.usagePercent, 0)}%</code>   ${bar(d.usagePercent)}`
+    );
+    disks.push(
+      `    └ <code>${esc(formatBytes(d.used))}</code> / <code>${esc(formatBytes(d.total))}</code>`
+    );
   }
 
   // ── Network card ──
@@ -86,10 +90,13 @@ export function formatReportHTML(m: SystemMetrics): string {
   // ── Alerts ──
   const alerts: string[] = [];
   if (m.cpu.usagePercent > 85) alerts.push(`🔴 CPU tinggi: ${m.cpu.usagePercent.toFixed(1)}%`);
-  if (m.memory.usagePercent > 90) alerts.push(`🔴 RAM hampir penuh: ${m.memory.usagePercent.toFixed(1)}%`);
-  if (m.memory.swapUsagePercent > 50) alerts.push(`🟡 Swap tinggi: ${m.memory.swapUsagePercent.toFixed(1)}%`);
+  if (m.memory.usagePercent > 90)
+    alerts.push(`🔴 RAM hampir penuh: ${m.memory.usagePercent.toFixed(1)}%`);
+  if (m.memory.swapUsagePercent > 50)
+    alerts.push(`🟡 Swap tinggi: ${m.memory.swapUsagePercent.toFixed(1)}%`);
   for (const d of m.disks) {
-    if (d.usagePercent > 90) alerts.push(`🔴 Disk <code>${esc(d.mount)}</code>: ${d.usagePercent}%`);
+    if (d.usagePercent > 90)
+      alerts.push(`🔴 Disk <code>${esc(d.mount)}</code>: ${d.usagePercent}%`);
   }
 
   if (alerts.length > 0) {

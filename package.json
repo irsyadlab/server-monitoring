@@ -1,10 +1,26 @@
 {
   "name": "server-monitoring",
+  "version": "1.0.0",
+  "description": "Lightweight server monitoring daemon — collects system metrics and sends structured reports to Telegram. Built with Bun + TypeScript.",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun index.ts",
+    "build": "bun build --compile index.ts --outfile server-monitor",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "bun run format:check && bun run lint"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@eslint/js": "^10",
+    "@types/bun": "latest",
+    "eslint": "^10",
+    "eslint-config-prettier": "^10",
+    "prettier": "^3",
+    "typescript-eslint": "^8"
   },
   "peerDependencies": {
     "typescript": "^5"
