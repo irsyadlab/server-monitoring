@@ -1,7 +1,7 @@
 # 🖥 Server Monitor
 
 > **Lightweight server watchdog** — collects real-time system metrics and sends structured reports to Telegram.
-> Built with Bun + TypeScript. Zero dependencies beyond the stdlib.
+> Global CLI tool. Install once, run anywhere. Built with Bun + TypeScript.
 
 <p align="center">
   <img src="https://img.shields.io/badge/runtime-Bun-000?style=flat&logo=bun" alt="bun">
@@ -24,51 +24,61 @@
 | 📊 **Top Processes** | Top 5 by CPU % — PID, name, CPU %, MEM %                       |
 | 🚨 **Alerts**        | Auto-flag when CPU > 85%, RAM > 90%, disk > 90%, or swap > 50% |
 
-Each report is color-coded with 🟢🟡🔴 health indicators and visual bar charts — readable at a glance in your Telegram inbox.
+Each report is color-coded with 🟢🟡🔴 health indicators and visual bar charts.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone & install
+### Install globally
+
+```bash
+bun i -g github:irsyadulibad/servermon
+```
+
+### First run — interactive setup
+
+```bash
+servermon
+```
+
+You'll be prompted for:
+
+1. **Telegram Bot Token** — get one from [@BotFather](https://t.me/BotFather)
+2. **Report interval** — how often to send reports (default: 300s = 5 min)
+
+Config is saved to `~/.irsyadulibad/servermon/config.json`.
+
+### Send a message to your bot
+
+DM your bot **once** (any message). The daemon auto-detects your chat ID.
+
+### Start monitoring
+
+```bash
+servermon
+```
+
+That's it. The daemon auto-detects your chat ID, sends an initial report, then loops.
+
+---
+
+## 🛠 Development
 
 ```bash
 git clone https://github.com/irsyadlab/server-monitoring.git
 cd server-monitoring
 bun install
-```
 
-### 2. Create a Telegram bot
+# Run in dev mode
+bun start
 
-Message [@BotFather](https://t.me/BotFather) on Telegram, create a bot, and copy the token.
+# Global link (for testing)
+bun link
+servermon
 
-### 3. Configure
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set your bot token:
-
-```env
-TELEGRAM_BOT_TOKEN=8832804360:AAF7...
-MONITOR_INTERVAL=300   # seconds (default: 300 = 5 minutes)
-```
-
-**Chat ID is auto-detected.** Just DM your bot once (any message), then run the daemon — it picks up the chat ID automatically and saves it to `.env`.
-
-### 4. Run
-
-```bash
-# Development (auto-reload on file changes)
-bun --watch index.ts
-
-# Production (compiled binary)
-bun run build        # → ./server-monitor
-./server-monitor
-
-# With PM2 (recommended for long-running daemons)
-pm2 start server-monitor --name monitor
+# Unlink
+bun unlink
 ```
 
 ---
@@ -101,7 +111,7 @@ pm2 start server-monitor --name monitor
 ✨ All systems normal
 ```
 
-When thresholds are crossed, alerts appear inline with your report — no separate alerting channel needed.
+When thresholds are crossed, alerts appear inline.
 
 ---
 
@@ -109,7 +119,7 @@ When thresholds are crossed, alerts appear inline with your report — no separa
 
 | Command          | Description                                    |
 | ---------------- | ---------------------------------------------- |
-| `bun start`      | Run the daemon (watch mode)                    |
+| `bun start`      | Run the daemon in dev mode                     |
 | `bun run build`  | Compile standalone binary → `./server-monitor` |
 | `bun run lint`   | Run ESLint                                     |
 | `bun run format` | Format with Prettier                           |
@@ -121,50 +131,50 @@ When thresholds are crossed, alerts appear inline with your report — no separa
 
 ```
 server-monitoring/
+├── cli.ts                # Global binary entry (interactive setup + launcher)
+├── index.ts              # Daemon core (start/loop/report)
 ├── src/
+│   ├── config.ts         # Config manager (~/.irsyadulibad/servermon/)
 │   ├── monitor.ts        # Metrics collector (CPU, RAM, disk, net, temp, procs)
 │   └── reporter.ts       # HTML formatter & Telegram sender
-├── index.ts              # Daemon entry point (loop + auto-detect chat ID)
-├── eslint.config.js      # Flat ESLint config
-├── .prettierrc           # Prettier config
-├── .env.example          # Config template
+├── eslint.config.js
+├── .prettierrc
 ├── package.json
 └── tsconfig.json
 ```
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Config
 
-All settings live in `.env`:
+Stored at `~/.irsyadulibad/servermon/config.json`:
 
-| Variable             | Required | Default     | Description                       |
-| -------------------- | -------- | ----------- | --------------------------------- |
-| `TELEGRAM_BOT_TOKEN` | Yes      | —           | Bot token from @BotFather         |
-| `TELEGRAM_CHAT_ID`   | No       | auto-detect | Target chat ID (DM or group)      |
-| `MONITOR_INTERVAL`   | No       | `300`       | Seconds between reports (min: 30) |
+```json
+{
+  "token": "883280...",
+  "interval": 300,
+  "chatId": "1216431846"
+}
+```
+
+- `token` — Telegram bot token (required)
+- `interval` — seconds between reports, min: 30 (default: 300)
+- `chatId` — auto-detected on first run, persisted for subsequent runs
 
 ---
 
-## 📦 Deploying
+## 📦 Deploy as systemd service
 
 ```bash
-# Build binary
-bun run build
-
-# Copy to server
-scp server-monitor user@host:/opt/monitor/
-
-# Run as systemd service
-sudo tee /etc/systemd/system/server-monitor.service << 'EOF'
+# After installing globally
+sudo tee /etc/systemd/system/servermon.service << 'EOF'
 [Unit]
 Description=Server Monitor Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/monitor/server-monitor
-WorkingDirectory=/opt/monitor
+ExecStart=/root/.bun/bin/servermon
 Restart=always
 RestartSec=10
 
@@ -173,7 +183,7 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now server-monitor
+sudo systemctl enable --now servermon
 ```
 
 ---

@@ -1,4 +1,6 @@
 .env
-server-monitor
 node_modules/
 *.log
+server-monitor
+dist/
+.irsyadulibad/

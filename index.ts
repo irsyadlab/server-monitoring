@@ -1,33 +1,24 @@
 import { sendReport } from "./src/reporter";
+import { saveConfig } from "./src/config";
 
-// --- Config from env ---
 const botToken = process.env["TELEGRAM_BOT_TOKEN"] ?? "";
-let chatId = process.env["TELEGRAM_CHAT_ID"] ?? ""; // optional — auto-detect kalau kosong
+let chatId = process.env["TELEGRAM_CHAT_ID"] ?? "";
 const rawInterval = process.env["MONITOR_INTERVAL"] ?? "300";
 const intervalSec = Math.max(30, parseInt(rawInterval) || 300);
-
-function banner() {
-  console.log("╔══════════════════════════════════════╗");
-  console.log("║     🖥  SERVER MONITOR DAEMON  🖥     ║");
-  console.log("║     Telegram  •  Bun  •  TypeScript  ║");
-  console.log("╚══════════════════════════════════════╝");
-  console.log();
-}
-
-if (!botToken) {
-  banner();
-  console.error("❌ TELEGRAM_BOT_TOKEN must be set in .env");
-  process.exit(1);
-}
 
 // --- Auto-detect chat ID ---
 async function autoDetectChatId(token: string): Promise<string | null> {
   try {
     const resp = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=5`);
-    const data = await resp.json();
+    const data = (await resp.json()) as {
+      ok: boolean;
+      result?: Array<{
+        message?: { chat?: { id: number; title?: string; first_name?: string } };
+        channel_post?: { chat?: { id: number; title?: string } };
+      }>;
+    };
     if (!data.ok || !data.result?.length) return null;
 
-    // Collect unique chat IDs from recent updates, prefer newest
     const chatIds = new Set<string>();
     for (const update of data.result.reverse()) {
       const chat = update.message?.chat || update.channel_post?.chat;
@@ -35,13 +26,9 @@ async function autoDetectChatId(token: string): Promise<string | null> {
     }
     if (chatIds.size === 0) return null;
 
-    // Pick first (most recent) chat ID
     const id = [...chatIds][0]!;
     const chatInfo = data.result.find(
-      (u: {
-        message?: { chat?: { id: number; title?: string; first_name?: string } };
-        channel_post?: { chat?: { id: number; title?: string } };
-      }) => String(u.message?.chat?.id || u.channel_post?.chat?.id) === id
+      (u) => String(u.message?.chat?.id || u.channel_post?.chat?.id) === id
     );
     const chatName =
       chatInfo?.message?.chat?.title ||
@@ -55,56 +42,68 @@ async function autoDetectChatId(token: string): Promise<string | null> {
   }
 }
 
-// --- Main ---
-banner();
-console.log(`⏱  Interval: ${intervalSec}s (${(intervalSec / 60).toFixed(0)} menit)`);
-console.log(`📡 Bot:      ...${botToken.slice(-8)}`);
-
-if (!chatId) {
-  console.log("🔍 TELEGRAM_CHAT_ID not set — auto-detecting...");
-  const detected = await autoDetectChatId(botToken);
-  if (!detected) {
-    console.error("❌ No recent chats found. DM your bot first, then re-run.");
-    console.error("   Or set TELEGRAM_CHAT_ID in .env manually.");
+// --- Daemon ---
+export async function start() {
+  if (!botToken) {
+    console.error("❌ TELEGRAM_BOT_TOKEN not set. Run `servermon` first to configure.");
     process.exit(1);
   }
-  chatId = detected;
-  // Persist to .env biar nggak perlu detect lagi
-  try {
-    const envPath = new URL(".env", import.meta.url).pathname;
-    let env = await Bun.file(envPath).text();
-    if (!env.includes("TELEGRAM_CHAT_ID=")) {
-      env += `\nTELEGRAM_CHAT_ID=${chatId}\n`;
-      await Bun.write(envPath, env);
-      console.log("💾 Chat ID saved to .env");
+
+  if (!chatId) {
+    console.log("🔍 TELEGRAM_CHAT_ID not set — auto-detecting...");
+    const detected = await autoDetectChatId(botToken);
+    if (!detected) {
+      console.error("❌ No recent chats found. DM your bot first, then re-run.");
+      console.error("   Or set TELEGRAM_CHAT_ID in ~/.irsyadulibad/servermon/config.json");
+      process.exit(1);
     }
-  } catch {
-    // ok if can't persist
+    chatId = detected;
+    // Persist to config
+    try {
+      const { loadConfig } = await import("./src/config");
+      const cfg = await loadConfig();
+      if (cfg) {
+        cfg.chatId = chatId;
+        await saveConfig(cfg);
+        console.log("💾 Chat ID saved to config");
+      }
+    } catch {
+      // ok
+    }
   }
+
+  console.log(`⏱  Interval: ${intervalSec}s (${(intervalSec / 60).toFixed(0)} menit)`);
+  console.log(`📡 Bot:      ...${botToken.slice(-8)}`);
+  console.log(`💬 Chat:     ${chatId}`);
+  console.log();
+
+  async function tick() {
+    const start2 = Date.now();
+    const ok = await sendReport(botToken, chatId);
+    const elapsed = Date.now() - start2;
+    const ts = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+    console.log(`[${ts}] ${ok ? "✅" : "❌"} ${elapsed}ms`);
+  }
+
+  // Run once at startup
+  await tick();
+
+  // Loop
+  setInterval(tick, intervalSec * 1000);
+
+  process.on("SIGINT", () => {
+    console.log("\n👋 Shutting down...");
+    process.exit(0);
+  });
+  process.on("SIGTERM", () => {
+    console.log("\n👋 Shutting down...");
+    process.exit(0);
+  });
 }
 
-console.log(`💬 Chat:     ${chatId}`);
-console.log();
-
-async function tick() {
-  const start = Date.now();
-  const ok = await sendReport(botToken, chatId);
-  const elapsed = Date.now() - start;
-  const ts = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  console.log(`[${ts}] ${ok ? "✅" : "❌"} ${elapsed}ms`);
+// Direct run support (for dev / bun index.ts)
+// When imported by cli.ts, cli.ts calls start() explicitly
+const isDirectlyRun = import.meta.url.endsWith(process.argv[1]?.replace(/^.*\//, "") ?? "");
+if (isDirectlyRun || process.argv[1]?.endsWith("index.ts")) {
+  start();
 }
-
-// Run once at startup
-await tick();
-
-// Loop
-setInterval(tick, intervalSec * 1000);
-
-process.on("SIGINT", () => {
-  console.log("\n👋 Shutting down...");
-  process.exit(0);
-});
-process.on("SIGTERM", () => {
-  console.log("\n👋 Shutting down...");
-  process.exit(0);
-});
