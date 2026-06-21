@@ -94,18 +94,6 @@ export function createApp(): Crust {
         inherit: true,
       },
     })
-    .run(() => {
-      // No subcommand → show available commands
-      console.log("Usage:  servermon <command> [--name <server>]\n");
-      console.log("Commands:");
-      console.log("  setup      First-time setup (bot token + interval)");
-      console.log("  start      Start the monitoring daemon");
-      console.log("  report     Send a one-time report without starting the daemon");
-      console.log("  list       List all configured servers");
-      console.log("  delete     Delete a configured server");
-      console.log("  service    Manage systemd service");
-      console.log("\n  Run `servermon <command> --help` for details.");
-    })
     /* ---- setup ---- */
     .command("setup", (cmd) =>
       cmd
@@ -278,5 +266,10 @@ export function createApp(): Crust {
 export async function main(): Promise<void> {
   printBanner();
   const app = createApp();
-  await app.execute();
+  // No args → show help
+  if (process.argv.length <= 2) {
+    await app.execute({ argv: ["--help"] });
+  } else {
+    await app.execute();
+  }
 }
