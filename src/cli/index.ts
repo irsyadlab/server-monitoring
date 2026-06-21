@@ -237,6 +237,24 @@ export function createApp(): Crust {
         })
     )
 
+    /* ---- dashboard ---- */
+    .command("dashboard", (cmd) =>
+      cmd
+        .meta({ description: "Start embedded web dashboard (HTMX + Elysia)" })
+        .flags({
+          port: {
+            type: "number",
+            description: "HTTP port (default: 3456)",
+            short: "p",
+            default: 3456,
+          },
+        })
+        .run(async ({ flags }) => {
+          const { startDashboard } = await import("./dashboard");
+          await startDashboard(flags.port ?? 3456);
+        })
+    )
+
     /* ---- service ---- */
     .command("service", (cmd) => serviceCmd(cmd))
 

@@ -33,6 +33,8 @@
   },
   "dependencies": {
     "@crustjs/core": "^0.0.19",
-    "@crustjs/plugins": "^0.1.2"
+    "@crustjs/plugins": "^0.1.2",
+    "@elysiajs/html": "^1.4.2",
+    "elysia": "^1.4.29"
   }
 }
