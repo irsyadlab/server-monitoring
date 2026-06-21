@@ -52,7 +52,6 @@ tailwindcss.config = {
 const STYLES = /* css */ `
 body { font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace; }
 .progress-bar { transition: width 0.6s ease; }
-.htmx-request { opacity: 0.5; pointer-events: none; }
 .card-fade { transition: opacity 0.3s ease; }
 .glow-green { box-shadow: 0 0 12px rgba(52,211,153,0.15); }
 .glow-blue  { box-shadow: 0 0 12px rgba(96,165,250,0.15); }
@@ -64,14 +63,26 @@ body { font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace; }
 /* ------------------------------------------------------------------ */
 
 function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /** Semantic bar colour based on utilisation percentage. */
 function barColor(pct: number, severity: "cpu" | "mem" | "disk" = "disk"): string {
-  if (severity === "cpu") return pct > 80 ? "bg-red-500" : pct > 50 ? "bg-yellow-500" : "bg-emerald-500";
-  if (severity === "mem") return pct > 80 ? "bg-red-500" : pct > 50 ? "bg-yellow-500" : "bg-blue-500";
-  return pct > 90 ? "bg-red-500" : pct > 75 ? "bg-orange-500" : pct > 50 ? "bg-yellow-500" : "bg-blue-500";
+  if (severity === "cpu")
+    return pct > 80 ? "bg-red-500" : pct > 50 ? "bg-yellow-500" : "bg-emerald-500";
+  if (severity === "mem")
+    return pct > 80 ? "bg-red-500" : pct > 50 ? "bg-yellow-500" : "bg-blue-500";
+  return pct > 90
+    ? "bg-red-500"
+    : pct > 75
+      ? "bg-orange-500"
+      : pct > 50
+        ? "bg-yellow-500"
+        : "bg-blue-500";
 }
 
 /** Text colour for percentage label. */
@@ -83,14 +94,22 @@ function pctColor(pct: number): string {
 /*  Template functions (pure, testable, no side-effects)                */
 /* ------------------------------------------------------------------ */
 
-function headerSection(hostname: string, platform: string, arch: string, uptime: number, temperature: number | null, port: number, version: string): string {
-  const tempHtml = temperature != null
-    ? `<span class="text-sm font-medium ${temperature > 75 ? 'text-red-400' : temperature > 50 ? 'text-yellow-400' : 'text-green-400'}">${temperature.toFixed(1)}°C</span>`
-    : '<span class="text-sm text-slate-500">—°C</span>';
+function headerSection(
+  hostname: string,
+  platform: string,
+  arch: string,
+  uptime: number,
+  temperature: number | null,
+  port: number,
+  version: string
+): string {
+  const tempHtml =
+    temperature != null
+      ? `<span class="text-sm font-medium ${temperature > 75 ? "text-red-400" : temperature > 50 ? "text-yellow-400" : "text-green-400"}">${temperature.toFixed(1)}°C</span>`
+      : '<span class="text-sm text-slate-500">—°C</span>';
 
-  const tempIcon = temperature != null
-    ? (temperature > 75 ? '🔴' : temperature > 50 ? '🟡' : '🟢')
-    : '⚪';
+  const tempIcon =
+    temperature != null ? (temperature > 75 ? "🔴" : temperature > 50 ? "🟡" : "🟢") : "⚪";
 
   return /* html */ `
 <header class="max-w-6xl mx-auto mb-6">
@@ -134,7 +153,7 @@ function cpuCard(cpu: SystemMetrics["cpu"]): string {
   const color = barColor(pct, "cpu");
   const glow = pct > 80 ? "glow-red" : pct > 50 ? "" : "glow-green";
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 ${glow} card-fade">
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 lg:col-span-2 ${glow} card-fade">
   <div class="flex items-center justify-between mb-3">
     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">CPU</h3>
     <span class="text-[10px] font-mono text-slate-500">${cpu.cores} cores</span>
@@ -158,7 +177,7 @@ function memCard(mem: SystemMetrics["memory"]): string {
   const color = barColor(pct, "mem");
   const glow = pct > 80 ? "glow-red" : "";
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 ${glow} card-fade">
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 lg:col-span-2 ${glow} card-fade">
   <div class="flex items-center justify-between mb-3">
     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Memory</h3>
     <span class="text-[10px] font-mono text-slate-500">${formatBytes(mem.total)}</span>
@@ -172,9 +191,11 @@ function memCard(mem: SystemMetrics["memory"]): string {
   </div>
   <div class="text-xs text-slate-500 space-y-0.5">
     <p><span class="text-slate-300">used</span> ${formatBytes(mem.used)} <span class="text-slate-600">·</span> <span class="text-slate-300">free</span> ${formatBytes(mem.free)}</p>
-    ${mem.swapTotal > 0
-      ? `<p>swap ${formatBytes(mem.swapUsed)} / ${formatBytes(mem.swapTotal)} <span class="${pctColor(mem.swapUsagePercent)} tabular-nums">(${mem.swapUsagePercent.toFixed(1)}%)</span></p>`
-      : '<p class="text-slate-600">swap n/a</p>'}
+    ${
+      mem.swapTotal > 0
+        ? `<p>swap ${formatBytes(mem.swapUsed)} / ${formatBytes(mem.swapTotal)} <span class="${pctColor(mem.swapUsagePercent)} tabular-nums">(${mem.swapUsagePercent.toFixed(1)}%)</span></p>`
+        : '<p class="text-slate-600">swap n/a</p>'
+    }
   </div>
 </div>`;
 }
@@ -182,10 +203,11 @@ function memCard(mem: SystemMetrics["memory"]): string {
 function diskSection(disks: DiskInfo[]): string {
   if (disks.length === 0) return "";
 
-  const rows = disks.map((d) => {
-    const bar = barColor(d.usagePercent, "disk");
-    const txt = pctColor(d.usagePercent);
-    return /* html */ `
+  const rows = disks
+    .map((d) => {
+      const bar = barColor(d.usagePercent, "disk");
+      const txt = pctColor(d.usagePercent);
+      return /* html */ `
     <tr class="hover:bg-slate-800/30 transition-colors">
       <td class="py-1.5 pr-3 text-slate-300 font-medium">${esc(d.mount)}</td>
       <td class="py-1.5 pr-3 text-right text-slate-400 text-xs tabular-nums">${formatBytes(d.used)} / ${formatBytes(d.total)}</td>
@@ -196,10 +218,11 @@ function diskSection(disks: DiskInfo[]): string {
       </td>
       <td class="py-1.5 pl-2 text-right text-xs font-semibold tabular-nums ${txt}">${d.usagePercent}%</td>
     </tr>`;
-  }).join("");
+    })
+    .join("");
 
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 card-fade">
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 lg:col-span-3 card-fade">
   <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Disks</h3>
   <div class="overflow-x-auto">
     <table class="w-full text-xs">
@@ -222,7 +245,9 @@ function netCard(net: SystemMetrics["network"]): string {
   const txWidth = Math.min((net.txRate / NET_BAR_SCALE) * 100, 100);
 
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 glow-blue card-fade">
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 lg:col-span-2 glow-blue card-fade">
+  <span id="_rx_val" data-val="${net.rxRate}" class="hidden"></span>
+  <span id="_tx_val" data-val="${net.txRate}" class="hidden"></span>
   <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Network</h3>
   <div class="space-y-4">
     <div>
@@ -254,19 +279,21 @@ function netCard(net: SystemMetrics["network"]): string {
 function procSection(procs: SystemMetrics["topProcs"]): string {
   if (procs.length === 0) return "";
 
-  const rows = procs.map((p, i) => {
-    const highlight = i === 0 ? "text-yellow-400" : "text-slate-200";
-    return /* html */ `
+  const rows = procs
+    .map((p, i) => {
+      const highlight = i === 0 ? "text-yellow-400" : "text-slate-200";
+      return /* html */ `
     <tr class="hover:bg-slate-800/30 transition-colors">
       <td class="py-1.5 pr-3 text-slate-500 tabular-nums">${p.pid}</td>
       <td class="py-1.5 pr-3 ${highlight} truncate max-w-[200px]" title="${esc(p.name)}">${esc(p.name)}</td>
       <td class="py-1.5 pr-3 text-right text-slate-300 tabular-nums">${p.cpuPercent.toFixed(1)}%</td>
       <td class="py-1.5 text-right text-slate-300 tabular-nums">${p.memPercent.toFixed(1)}%</td>
     </tr>`;
-  }).join("");
+    })
+    .join("");
 
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 card-fade">
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 lg:col-span-3 card-fade">
   <div class="flex items-center justify-between mb-3">
     <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Top Processes</h3>
     <span class="text-[10px] text-slate-500">by CPU</span>
@@ -289,14 +316,34 @@ function procSection(procs: SystemMetrics["topProcs"]): string {
 
 function chartSection(): string {
   return /* html */ `
-<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 card-fade" id="_chart_wrapper">
-  <div class="flex items-center justify-between mb-3">
-    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">CPU & RAM History</h3>
-    <span class="text-[10px] text-slate-500">last 60 samples (≈5 min)</span>
+<div class="bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-800 rounded-xl p-4 md:col-span-2 lg:col-span-6 card-fade" id="_chart_wrapper">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4">
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">CPU &amp; RAM</h3>
+        <div class="flex items-center gap-3 text-[10px] text-slate-500">
+          <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>CPU</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>RAM</span>
+        </div>
+      </div>
+      <div class="h-48">
+        <canvas id="historyChart"></canvas>
+      </div>
+    </div>
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Network I/O</h3>
+        <div class="flex items-center gap-3 text-[10px] text-slate-500">
+          <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>RX</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-violet-400"></span>TX</span>
+        </div>
+      </div>
+      <div class="h-48">
+        <canvas id="netChart"></canvas>
+      </div>
+    </div>
   </div>
-  <div class="h-52">
-    <canvas id="historyChart"></canvas>
-  </div>
+  <p class="text-[10px] text-slate-600 text-right mt-2">60 samples · ≈5 min rolling window</p>
 </div>`;
 }
 
@@ -311,14 +358,14 @@ function footerSection(hostname: string): string {
 /** HTMX-swappable dashboard body (replaces #dashboard container). */
 function metricsFragment(metrics: SystemMetrics): string {
   return /* html */ `
-<div id="dashboard" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4"
+<div id="dashboard" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
      hx-get="/_dashboard/metrics" hx-trigger="every 5s" hx-swap="outerHTML" hx-target="#dashboard">
   ${cpuCard(metrics.cpu)}
   ${memCard(metrics.memory)}
-  ${diskSection(metrics.disks)}
   ${netCard(metrics.network)}
-  ${procSection(metrics.topProcs)}
   ${chartSection()}
+  ${diskSection(metrics.disks)}
+  ${procSection(metrics.topProcs)}
 </div>`;
 }
 
@@ -345,76 +392,208 @@ function layout(metrics: SystemMetrics, port: number, version: string): string {
 
 <script>
 (function() {
-  /* ---- Chart.js history (60-sample rolling window) ---- */
-  function initChart() {
+  const MAX = 60;
+
+  function makeGradient(ctx, colorTop, colorBot) {
+    const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.clientHeight || 160);
+    g.addColorStop(0, colorTop);
+    g.addColorStop(1, colorBot);
+    return g;
+  }
+
+  function baseOptions(yLabel, yMax) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400, easing: "easeOutQuart" },
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: {
+          display: true,
+          grid: { display: false },
+          ticks: {
+            color: "#475569",
+            maxTicksLimit: 7,
+            maxRotation: 0,
+            callback: function(val, i) {
+              const lbl = this.chart.data.labels[i];
+              return lbl || "";
+            },
+          },
+          border: { display: false },
+        },
+        y: {
+          min: 0, max: yMax,
+          grid: { color: "rgba(148,163,184,0.05)", drawBorder: false },
+          ticks: {
+            color: "#475569",
+            maxTicksLimit: 5,
+            callback: (v) => yLabel === "%" ? v + "%" : v,
+          },
+          border: { display: false },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "rgba(15,23,42,0.95)",
+          borderColor: "rgba(148,163,184,0.12)",
+          borderWidth: 1,
+          titleColor: "#94a3b8",
+          bodyColor: "#e2e8f0",
+          padding: 10,
+          callbacks: {
+            label: function(ctx) {
+              const val = ctx.parsed.y;
+              if (yLabel === "%") return " " + ctx.dataset.label + ": " + val.toFixed(1) + "%";
+              return " " + ctx.dataset.label + ": " + formatBytesRate(val);
+            },
+          },
+        },
+      },
+    };
+  }
+
+  function formatBytesRate(bps) {
+    if (bps >= 1048576) return (bps / 1048576).toFixed(1) + " MB/s";
+    if (bps >= 1024) return (bps / 1024).toFixed(1) + " KB/s";
+    return bps.toFixed(0) + " B/s";
+  }
+
+  function nowLabel() {
+    const d = new Date();
+    return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0") + ":" + d.getSeconds().toString().padStart(2,"0");
+  }
+
+  function initCharts() {
     const canvas = document.getElementById("historyChart");
+    const netCanvas = document.getElementById("netChart");
     if (!canvas || window._chartInited) return;
     window._chartInited = true;
 
+    /* Destroy stale chart instances bound to the now-replaced canvases. */
+    if (window.__chart) { window.__chart.destroy(); window.__chart = null; }
+    if (window.__netChart) { window.__netChart.destroy(); window.__netChart = null; }
+
+    /* -- history data store (preserve across HTMX swaps) -- */
+    const history = window.__history || {
+      labels: new Array(MAX).fill(""),
+      cpu: new Array(MAX).fill(null),
+      mem: new Array(MAX).fill(null),
+      rx:  new Array(MAX).fill(null),
+      tx:  new Array(MAX).fill(null),
+    };
+    window.__history = history;
+
+    /* -- CPU/RAM chart -- */
     const ctx = canvas.getContext("2d");
-    const MAX = 60;
-    const data = { cpu: new Array(MAX).fill(0), mem: new Array(MAX).fill(0) };
-    const labels = new Array(MAX).fill("");
+    const cpuGrad = makeGradient(ctx, "rgba(52,211,153,0.25)", "rgba(52,211,153,0.01)");
+    const memGrad = makeGradient(ctx, "rgba(96,165,250,0.25)", "rgba(96,165,250,0.01)");
 
     window.__chart = new Chart(ctx, {
       type: "line",
       data: {
-        labels: labels,
+        labels: history.labels,
         datasets: [
-          { label: "CPU %", data: data.cpu,
-            borderColor: "#34d399", backgroundColor: "rgba(52,211,153,0.06)",
-            tension: 0.3, fill: true, pointRadius: 0, borderWidth: 1.5 },
-          { label: "RAM %", data: data.mem,
-            borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.06)",
-            tension: 0.3, fill: true, pointRadius: 0, borderWidth: 1.5 },
+          {
+            label: "CPU",
+            data: history.cpu,
+            borderColor: "#34d399",
+            backgroundColor: cpuGrad,
+            tension: 0.4, fill: true, pointRadius: 0,
+            borderWidth: 2,
+            spanGaps: false,
+          },
+          {
+            label: "RAM",
+            data: history.mem,
+            borderColor: "#60a5fa",
+            backgroundColor: memGrad,
+            tension: 0.4, fill: true, pointRadius: 0,
+            borderWidth: 2,
+            spanGaps: false,
+          },
         ],
       },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: false,
-        scales: {
-          x: { display: false },
-          y: { min: 0, max: 100,
-            grid: { color: "rgba(148,163,184,0.06)" },
-            ticks: { color: "#64748b", maxTicksLimit: 5 } },
-        },
-        plugins: {
-          legend: { labels: { color: "#94a3b8", boxWidth: 12, padding: 12 } },
-        },
-      },
+      options: baseOptions("%", 100),
     });
 
-    window.__history = data;
+    /* -- Network chart -- */
+    if (netCanvas) {
+      const nctx = netCanvas.getContext("2d");
+      const rxGrad = makeGradient(nctx, "rgba(52,211,153,0.20)", "rgba(52,211,153,0.01)");
+      const txGrad = makeGradient(nctx, "rgba(167,139,250,0.20)", "rgba(167,139,250,0.01)");
+
+      window.__netChart = new Chart(nctx, {
+        type: "line",
+        data: {
+          labels: history.labels,
+          datasets: [
+            {
+              label: "RX",
+              data: history.rx,
+              borderColor: "#34d399",
+              backgroundColor: rxGrad,
+              tension: 0.4, fill: true, pointRadius: 0,
+              borderWidth: 1.5,
+              spanGaps: false,
+            },
+            {
+              label: "TX",
+              data: history.tx,
+              borderColor: "#a78bfa",
+              backgroundColor: txGrad,
+              tension: 0.4, fill: true, pointRadius: 0,
+              borderWidth: 1.5,
+              spanGaps: false,
+            },
+          ],
+        },
+        options: (function() {
+          const o = baseOptions("bytes", undefined);
+          o.scales.y.ticks.callback = (v) => formatBytesRate(v);
+          return o;
+        })(),
+      });
+    }
   }
 
-  /* Push latest values from DOM every 5s (after HTMX swap) */
   function pushMetrics() {
     const cpuEl = document.getElementById("_cpu_val");
     const memEl = document.getElementById("_mem_val");
-    if (!cpuEl || !memEl || !window.__history || !window.__chart) return;
+    const rxEl  = document.getElementById("_rx_val");
+    const txEl  = document.getElementById("_tx_val");
+    if (!cpuEl || !memEl || !window.__history) return;
 
-    const cpu = parseFloat(cpuEl.dataset.val) || 0;
-    const mem = parseFloat(memEl.dataset.val) || 0;
+    const h = window.__history;
+    const label = nowLabel();
 
-    window.__history.cpu.push(cpu);
-    window.__history.mem.push(mem);
-    if (window.__history.cpu.length > 60) {
-      window.__history.cpu.shift();
-      window.__history.mem.shift();
-    }
-    window.__chart.update("none");
+    h.labels.push(label);
+    h.cpu.push(parseFloat(cpuEl.dataset.val) || 0);
+    h.mem.push(parseFloat(memEl.dataset.val) || 0);
+    h.rx.push(rxEl  ? (parseFloat(rxEl.dataset.val)  || 0) : null);
+    h.tx.push(txEl  ? (parseFloat(txEl.dataset.val)  || 0) : null);
+
+    if (h.labels.length > MAX) { h.labels.shift(); h.cpu.shift(); h.mem.shift(); h.rx.shift(); h.tx.shift(); }
+
+    if (window.__chart) window.__chart.update();
+    if (window.__netChart) window.__netChart.update();
   }
 
-  /* Init on first load */
-  document.addEventListener("DOMContentLoaded", initChart);
-  /* Re-init after HTMX swap (chart canvas is replaced) */
+  /* First load: build charts and seed the first sample. */
+  document.addEventListener("DOMContentLoaded", function() {
+    initCharts();
+    setTimeout(pushMetrics, 200);
+  });
+
+  /* Each HTMX refresh replaces the canvas — rebuild on the preserved
+     history and append exactly one fresh sample. This is the only push
+     path, so samples map 1:1 to the 5s refresh (no stale/duplicate data). */
   document.body.addEventListener("htmx:afterSwap", function() {
     window._chartInited = false;
-    initChart();
-    /* Push a value immediately after swap so chart isn't all zeros */
+    initCharts();
     setTimeout(pushMetrics, 100);
   });
-  /* Periodic push */
-  setInterval(pushMetrics, 5000);
 })();
 </script>
 </body>

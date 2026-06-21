@@ -1,6 +1,6 @@
 import { sendReport } from "../reporter";
 import { saveConfig, loadConfig, listServers } from "../config";
-import type { ServerEntry, NamedConfig } from "../types";
+import type { NamedConfig } from "../types";
 
 /* ------------------------------------------------------------------ */
 /*  Environment variables (set by cli/)                                */

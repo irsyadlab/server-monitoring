@@ -1,12 +1,6 @@
 import { Crust } from "@crustjs/core";
 import { helpPlugin, versionPlugin, didYouMeanPlugin } from "@crustjs/plugins";
-import {
-  loadConfig,
-  saveConfig,
-  configPath,
-  listServers,
-  deleteConfig,
-} from "../config";
+import { loadConfig, saveConfig, configPath, listServers, deleteConfig } from "../config";
 import { printBanner } from "./banner";
 import { serviceCmd } from "./service";
 import pkg from "../../package.json";
@@ -103,38 +97,36 @@ export function createApp(): Crust {
     )
     /* ---- start ---- */
     .command("start", (cmd) =>
-      cmd
-        .meta({ description: "Start the monitoring daemon" })
-        .run(async ({ flags }) => {
-          const name = flags.name;
+      cmd.meta({ description: "Start the monitoring daemon" }).run(async ({ flags }) => {
+        const name = flags.name;
 
-          if (name) {
-            const config = await loadConfig(name);
-            if (!config) {
-              console.error(
-                `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
-              );
-              process.exit(1);
-            }
-            process.env["TELEGRAM_BOT_TOKEN"] = config.token;
-            process.env["MONITOR_INTERVAL"] = String(config.interval);
-            if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
-            if (name) process.env["SERVER_NAME"] = name;
-
-            console.log(`📁 Config: ${configPath()}`);
-            console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
-            if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
-            if (name) console.log(`🏷  Name:   ${name}`);
-            console.log();
-
-            const { start } = await import("../daemon");
-            await start();
-          } else {
-            console.log("  🌐 Multi-server mode — monitoring all configured servers\n");
-            const { startAll } = await import("../daemon");
-            await startAll();
+        if (name) {
+          const config = await loadConfig(name);
+          if (!config) {
+            console.error(
+              `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+            );
+            process.exit(1);
           }
-        })
+          process.env["TELEGRAM_BOT_TOKEN"] = config.token;
+          process.env["MONITOR_INTERVAL"] = String(config.interval);
+          if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
+          if (name) process.env["SERVER_NAME"] = name;
+
+          console.log(`📁 Config: ${configPath()}`);
+          console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
+          if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
+          if (name) console.log(`🏷  Name:   ${name}`);
+          console.log();
+
+          const { start } = await import("../daemon");
+          await start();
+        } else {
+          console.log("  🌐 Multi-server mode — monitoring all configured servers\n");
+          const { startAll } = await import("../daemon");
+          await startAll();
+        }
+      })
     )
 
     /* ---- report ---- */

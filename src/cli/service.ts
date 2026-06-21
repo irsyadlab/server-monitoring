@@ -56,7 +56,9 @@ function getServiceStatus(): string {
 async function cmdInstall(): Promise<void> {
   const servers = await listServers();
   if (servers.length === 0) {
-    console.error("❌ No servers configured. Run `servermon setup` or `servermon setup --name <name>` first.");
+    console.error(
+      "❌ No servers configured. Run `servermon setup` or `servermon setup --name <name>` first."
+    );
     process.exit(1);
   }
 
@@ -196,39 +198,29 @@ export const serviceCmd: Parameters<Crust["command"]>[1] = (cmd) =>
   cmd
     .meta({ description: "Manage systemd service" })
     .command("install", (sub) =>
-      sub
-        .meta({ description: "Install systemd service & start" })
-        .run(async () => {
-          await cmdInstall();
-        })
+      sub.meta({ description: "Install systemd service & start" }).run(async () => {
+        await cmdInstall();
+      })
     )
     .command("status", (sub) =>
-      sub
-        .meta({ description: "Check service health" })
-        .run(() => {
-          cmdStatus();
-        })
+      sub.meta({ description: "Check service health" }).run(() => {
+        cmdStatus();
+      })
     )
     .command("stop", (sub) =>
-      sub
-        .meta({ description: "Stop the service" })
-        .run(() => {
-          cmdStop();
-        })
+      sub.meta({ description: "Stop the service" }).run(() => {
+        cmdStop();
+      })
     )
     .command("restart", (sub) =>
-      sub
-        .meta({ description: "Restart the service" })
-        .run(() => {
-          cmdRestart();
-        })
+      sub.meta({ description: "Restart the service" }).run(() => {
+        cmdRestart();
+      })
     )
     .command("logs", (sub) =>
-      sub
-        .meta({ description: "Follow real-time logs" })
-        .run(() => {
-          cmdLogs();
-        })
+      sub.meta({ description: "Follow real-time logs" }).run(() => {
+        cmdLogs();
+      })
     )
     .command("uninstall", (sub) =>
       sub

@@ -1,7 +1,6 @@
 import { homedir } from "os";
 import { join } from "path";
-import { mkdir, unlink } from "fs/promises";
-import { existsSync } from "fs";
+import { mkdir } from "fs/promises";
 import type { ServerMonConfig, ServerEntry } from "../types";
 
 const CONFIG_DIR = join(homedir(), ".irsyadulibad", "servermon");
@@ -61,9 +60,7 @@ export async function loadConfig(name?: string): Promise<ServerEntry | null> {
   };
 }
 
-export async function saveConfig(
-  entry: ServerEntry & { name?: string },
-): Promise<void> {
+export async function saveConfig(entry: ServerEntry & { name?: string }): Promise<void> {
   const cfg = (await readConfig()) ?? { servers: {} };
   const key = entry.name ?? "default";
   cfg.servers[key] = {
