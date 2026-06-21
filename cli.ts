@@ -7,11 +7,24 @@
 import { loadConfig, saveConfig, configPath, configDir } from "./src/config";
 
 function banner() {
-  console.log("╔══════════════════════════════════════╗");
-  console.log("║     🖥  SERVER MONITOR DAEMON  🖥     ║");
-  console.log("║     Telegram  •  Bun  •  TypeScript  ║");
-  console.log("╚══════════════════════════════════════╝");
-  console.log();
+  const c = {
+    cyan: "\x1b[36m",
+    gray: "\x1b[90m",
+    gold: "\x1b[33m",
+    reset: "\x1b[0m",
+  };
+  console.log("");
+  console.log(`${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`);
+  console.log(`${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`);
+  console.log(`${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`);
+  console.log(`${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`);
+  console.log(`${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`);
+  console.log("");
+  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(`  🖥  Server Monitor Daemon  •  Telegram  •  Bun  •  TypeScript`);
+  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(`${c.gold}                              by irsyadulibad${c.reset}`);
+  console.log("");
 }
 
 // ─────────────────────────────────────
@@ -196,11 +209,24 @@ async function main() {
   }
 
   // --- no/invalid subcommand → help ---
-  console.log("╔══════════════════════════════════════╗");
-  console.log("║     🖥  SERVER MONITOR DAEMON  🖥     ║");
-  console.log("║     Telegram  •  Bun  •  TypeScript  ║");
-  console.log("╚══════════════════════════════════════╝");
-  console.log();
+  const c = {
+    cyan: "\x1b[36m",
+    gray: "\x1b[90m",
+    gold: "\x1b[33m",
+    reset: "\x1b[0m",
+  };
+  console.log("");
+  console.log(`${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`);
+  console.log(`${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`);
+  console.log(`${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`);
+  console.log(`${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`);
+  console.log(`${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`);
+  console.log("");
+  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(`  🖥  Server Monitor Daemon  •  Telegram  •  Bun  •  TypeScript`);
+  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(`${c.gold}                              by irsyadulibad${c.reset}`);
+  console.log("");
   console.log("Usage:  servermon <command>");
   console.log();
   console.log("Commands:");
