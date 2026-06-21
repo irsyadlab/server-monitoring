@@ -14,17 +14,17 @@
 
 ## ✨ Features
 
-| Category           | What it tracks                                                 |
-| ------------------ | -------------------------------------------------------------- |
-| 💻 **CPU**         | Model, core count, usage %, load average (1/5/15 min)          |
-| 🧠 **RAM**         | Used / total, usage %, swap usage                              |
-| 💾 **Disk**        | Per-mount used / total, usage % — deduplicated                 |
-| 🌐 **Network**     | RX / TX rate (bytes/sec, sampled over 1s)                      |
-| 🌡 **Temperature** | CPU package temp via thermal zones (`/sys/class/thermal`)      |
-| 📊 **Top Processes** | Top 5 by CPU % — PID, name, CPU %, MEM %                     |
-| 🚨 **Alerts**      | Auto-flag when CPU > 85%, RAM > 90%, disk > 90%, or swap > 50% |
-| 🌍 **Multi-server** | Monitor multiple servers with one bot via `--name` flag        |
-| ⏱ **One-shot report** | Send a report on demand without starting the daemon       |
+| Category              | What it tracks                                                 |
+| --------------------- | -------------------------------------------------------------- |
+| 💻 **CPU**            | Model, core count, usage %, load average (1/5/15 min)          |
+| 🧠 **RAM**            | Used / total, usage %, swap usage                              |
+| 💾 **Disk**           | Per-mount used / total, usage % — deduplicated                 |
+| 🌐 **Network**        | RX / TX rate (bytes/sec, sampled over 1s)                      |
+| 🌡 **Temperature**    | CPU package temp via thermal zones (`/sys/class/thermal`)      |
+| 📊 **Top Processes**  | Top 5 by CPU % — PID, name, CPU %, MEM %                       |
+| 🚨 **Alerts**         | Auto-flag when CPU > 85%, RAM > 90%, disk > 90%, or swap > 50% |
+| 🌍 **Multi-server**   | Monitor multiple servers with one bot via `--name` flag        |
+| ⏱ **One-shot report** | Send a report on demand without starting the daemon            |
 
 Each report is color-coded with 🟢🟡🔴 health indicators and visual bar charts.
 
@@ -123,6 +123,7 @@ servermon delete --name prod --yes
 ```
 
 Reports appear with the server name in the header:
+
 > 🖥 **server01** [**prod**] — ✅ HEALTHY
 > 🖥 **server02** [**staging**] — ⚠️ WARNING
 
@@ -157,6 +158,7 @@ Reports appear with the server name in the header:
 ```
 
 When thresholds are crossed, alerts appear inline:
+
 ```
 🚨 CRITICAL
 🔴 RAM hampir penuh: 91.2%
@@ -167,13 +169,13 @@ When thresholds are crossed, alerts appear inline:
 
 ## 🔧 Scripts
 
-| Command                | Description                                    |
-| ---------------------- | ---------------------------------------------- |
-| `bun start`            | Run the daemon in dev mode                     |
-| `bun run build`        | Compile standalone binary → `./server-monitor` |
-| `bun run lint`         | Run ESLint                                     |
-| `bun run format`       | Format with Prettier                           |
-| `bun run check`        | Format check + lint (CI-ready)                 |
+| Command          | Description                                    |
+| ---------------- | ---------------------------------------------- |
+| `bun start`      | Run the daemon in dev mode                     |
+| `bun run build`  | Compile standalone binary → `./server-monitor` |
+| `bun run lint`   | Run ESLint                                     |
+| `bun run format` | Format with Prettier                           |
+| `bun run check`  | Format check + lint (CI-ready)                 |
 
 ---
 
@@ -226,12 +228,12 @@ For named servers, configs are stored separately:
 └── config-staging.json  # servermon setup --name staging
 ```
 
-| Field      | Description                                                |
-| ---------- | ---------------------------------------------------------- |
-| `token`    | Telegram bot token (required)                              |
-| `interval` | Seconds between reports (min: 30, default: 300)            |
-| `chatId`   | Auto-detected on first run, persisted for subsequent runs  |
-| `name`     | Server name label (set via `--name`, shown in reports)     |
+| Field      | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `token`    | Telegram bot token (required)                             |
+| `interval` | Seconds between reports (min: 30, default: 300)           |
+| `chatId`   | Auto-detected on first run, persisted for subsequent runs |
+| `name`     | Server name label (set via `--name`, shown in reports)    |
 
 ---
 

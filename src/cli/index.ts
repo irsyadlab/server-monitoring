@@ -7,103 +7,11 @@ import {
   deleteConfig,
 } from "../config";
 import { printBanner, printHelp } from "./banner";
+import { serviceRouter } from "./service";
 
-/* ------------------------------------------------------------------ */
-/*  systemd auto‑setup                                                 */
-/* ------------------------------------------------------------------ */
-
-async function setupSystemd(): Promise<void> {
-  printBanner();
-  console.log("⚙️  Systemd Service Setup\n");
-
-  const config = await loadConfig();
-  if (!config) {
-    console.error("❌ No config found. Run `servermon` first to set up.");
-    console.error("   Then try: servermon --install-service");
-    process.exit(1);
-  }
-
-  const bunPath = Bun.which("bun");
-  if (!bunPath) {
-    console.error("❌ bun not found in PATH");
-    process.exit(1);
-  }
-
-  const servermonPath = Bun.which("servermon");
-  if (!servermonPath) {
-    console.error("❌ servermon binary not found.");
-    console.error("   Install with: bun i -g @irsyadulibad/servermon");
-    process.exit(1);
-  }
-
-  console.log(`🔍 bun:       ${bunPath}`);
-  console.log(`🔍 servermon: ${servermonPath}`);
-  console.log(`📁 Config:    ${configPath()}\n`);
-
-  const home = process.env.HOME ?? "~";
-  const systemdDir = `${home}/.config/systemd/user`;
-  await Bun.write(`${systemdDir}/.gitkeep`, "");
-  try {
-    await (
-      Bun as unknown as { mkdir?: (path: string, opts: { recursive: boolean }) => Promise<void> }
-    ).mkdir?.(systemdDir, { recursive: true });
-  } catch {
-    /* Bun.mkdir may not exist; fs fallback */
-  }
-  try {
-    await import("node:fs").then((m) => m.mkdirSync(systemdDir, { recursive: true }));
-  } catch {
-    /* fs.mkdirSync fallback */
-  }
-
-  const serviceFile = `${systemdDir}/servermon.service`;
-  const serviceContent = `[Unit]
-Description=Server Monitor — Telegram system health reports
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=${servermonPath} start
-Restart=always
-RestartSec=30
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=default.target
-`;
-  await Bun.write(serviceFile, serviceContent);
-  console.log(`📄 Written: ${serviceFile}\n`);
-
-  const cmds = [
-    ["systemctl", "--user", "daemon-reload"],
-    ["systemctl", "--user", "enable", "servermon.service"],
-    ["systemctl", "--user", "start", "servermon.service"],
-    ["systemctl", "--user", "status", "servermon.service", "--no-pager", "-l"],
-  ];
-
-  for (const cmd of cmds) {
-    console.log(`🏃 ${cmd.join(" ")}`);
-    const proc = Bun.spawnSync({ cmd, stdout: "pipe", stderr: "pipe" });
-    const out = new TextDecoder().decode(proc.stdout);
-    const err = new TextDecoder().decode(proc.stderr);
-    if (out) console.log(out);
-    if (err && proc.exitCode !== 0) console.error(err);
-  }
-
-  console.log("\n✅ Systemd service installed!\n");
-  console.log("📌 For auto-start at boot, enable lingering:");
-  console.log(`   loginctl enable-linger\n`);
-  console.log("📋 Useful commands:");
-  console.log("   systemctl --user status servermon    # check status");
-  console.log("   systemctl --user stop servermon      # stop daemon");
-  console.log("   systemctl --user restart servermon   # restart");
-  console.log("   journalctl --user -u servermon -f    # watch logs");
-}
-
-/* ------------------------------------------------------------------ */
-/*  Interactive setup                                                  */
-/* ------------------------------------------------------------------ */
+// ─────────────────────────────────────
+//  Interactive setup
+// ─────────────────────────────────────
 
 async function interactiveSetup(name?: string): Promise<void> {
   const tag = name ? ` [${name}]` : "";
@@ -303,8 +211,15 @@ export async function main(): Promise<void> {
     return;
   }
 
+  if (cmd === "service") {
+    await serviceRouter();
+    return;
+  }
+
+  // --- backward compat ---
   if (cmd === "install-service" || cmd === "--install-service" || cmd === "--setup-systemd") {
-    await setupSystemd();
+    console.log("ℹ️  This command is deprecated. Use: `servermon service install`");
+    await serviceRouter();
     return;
   }
 
