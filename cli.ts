@@ -219,6 +219,30 @@ async function main() {
     return;
   }
 
+  if (cmd === "report") {
+    const name = parseFlag(process.argv, "--name") || undefined;
+    const config = await loadConfig(name);
+    if (!config) {
+      console.error(name
+        ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+        : "❌ No config found. Run `servermon setup` first.");
+      process.exit(1);
+    }
+    if (!config.chatId) {
+      console.error("❌ Chat ID not set. Run `servermon start` first to auto-detect.");
+      process.exit(1);
+    }
+
+    console.log(`📤 Sending one-time report${name ? ` for [${name}]` : ""}...`);
+    console.log(`📡 Bot: ...${config.token.slice(-8)}  💬 ${config.chatId}`);
+    console.log();
+
+    const { sendReport } = await import("./src/reporter");
+    const ok = await sendReport(config.token, config.chatId, config.name);
+    console.log(ok ? "✅ Report sent!" : "❌ Failed to send report");
+    return;
+  }
+
   if (cmd === "list") {
     const servers = await listServers();
     if (servers.length === 0) {
@@ -267,6 +291,7 @@ async function main() {
   console.log("Commands:");
   console.log("  setup [--name <srv>]  First-time setup (bot token + interval) for a server");
   console.log("  start [--name <srv>]  Start the monitoring daemon for a server");
+  console.log("  report [--name <srv>] Send a one-time report without starting the daemon");
   console.log("  list                  List all configured servers");
   console.log("  install-service       Install as systemd user service");
   console.log();
@@ -274,6 +299,7 @@ async function main() {
   console.log("  servermon setup");
   console.log("  servermon setup --name prod");
   console.log("  servermon start --name staging");
+  console.log("  servermon report --name prod");
   console.log("  servermon list");
   console.log("  servermon install-service");
 }
