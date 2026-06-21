@@ -53,10 +53,11 @@ function getServiceStatus(): string {
 /*  Subcommand handlers                                                */
 /* ------------------------------------------------------------------ */
 
-async function cmdInstall(): Promise<void> {
-  const config = await loadConfig();
+async function cmdInstall(name?: string): Promise<void> {
+  const config = await loadConfig(name);
   if (!config) {
-    console.error("❌ No config found. Run `servermon setup` first.");
+    const tag = name ? `"${name}"` : "any server";
+    console.error(`❌ No config found for ${tag}. Run \`servermon setup${name ? ` --name ${name}` : ""}\` first.`);
     process.exit(1);
   }
 
@@ -78,21 +79,8 @@ async function cmdInstall(): Promise<void> {
 
   await ensureSystemdDir();
 
-  const serviceContent = `[Unit]
-Description=Server Monitor — Telegram system health reports
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=${servermonPath} start
-Restart=always
-RestartSec=30
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=default.target
-`;
+  const nameFlag = name ? ` --name ${name}` : "";
+  const serviceContent = `[Unit]\nDescription=Server Monitor${name ? ` [${name}]` : ""} — Telegram system health reports\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nExecStart=${servermonPath} start${nameFlag}\nRestart=always\nRestartSec=30\nEnvironment=NODE_ENV=production\n\n[Install]\nWantedBy=default.target\n`;
 
   await Bun.write(SERVICE_PATH, serviceContent);
   console.log(`📄 Written: ${SERVICE_PATH}`);
@@ -208,8 +196,8 @@ export const serviceCmd: Parameters<Crust["command"]>[1] = (cmd) =>
     .command("install", (sub) =>
       sub
         .meta({ description: "Install systemd service & start" })
-        .run(async () => {
-          await cmdInstall();
+        .run(async ({ flags }) => {
+          await cmdInstall(flags.name);
         })
     )
     .command("status", (sub) =>
