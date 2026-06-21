@@ -56,16 +56,20 @@ export interface SystemMetrics {
   temperature: number | null; // celsius
 }
 
-/** ServerMon config persisted to disk */
-export interface ServerMonConfig {
+/** A single server entry in the config */
+export interface ServerEntry {
   token: string;
   interval: number;
   chatId?: string;
-  name?: string;
+}
+
+/** Top-level config persisted to disk — single file, multiple servers */
+export interface ServerMonConfig {
+  servers: Record<string, ServerEntry>;
 }
 
 /** A named config loaded at runtime — internal for multi-server loop */
 export interface NamedConfig {
   name: string;
-  cfg: ServerMonConfig;
+  cfg: ServerEntry;
 }

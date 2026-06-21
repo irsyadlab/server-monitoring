@@ -4,7 +4,6 @@ import {
   loadConfig,
   saveConfig,
   configPath,
-  configFile,
   listServers,
   deleteConfig,
 } from "../config";
@@ -19,7 +18,7 @@ import pkg from "../../package.json";
 async function interactiveSetup(name?: string): Promise<void> {
   const tag = name ? ` [${name}]` : "";
   console.log(`🖥  Server Monitor — First Time Setup${tag}`);
-  console.log(`   Config will be saved to: ${configFile(name)}\n`);
+  console.log(`   Config will be saved to: ${configPath()}\n`);
 
   const token = prompt("🔑 Telegram Bot Token: ")?.trim();
   if (!token) {
@@ -65,7 +64,7 @@ async function interactiveSetup(name?: string): Promise<void> {
 
   await saveConfig({ token, interval, name });
   console.log(`\n✅ Config saved!`);
-  console.log(`   📁 ${configFile(name)}`);
+  console.log(`   📁 ${configPath()}`);
   console.log(`   ⏱  Interval: ${interval}s (${label})`);
   const serverTag = name ? ` --name ${name}` : "";
   console.log(
@@ -120,12 +119,12 @@ export function createApp(): Crust {
             process.env["TELEGRAM_BOT_TOKEN"] = config.token;
             process.env["MONITOR_INTERVAL"] = String(config.interval);
             if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
-            if (config.name) process.env["SERVER_NAME"] = config.name;
+            if (name) process.env["SERVER_NAME"] = name;
 
-            console.log(`📁 Config: ${configPath(config.name)}`);
+            console.log(`📁 Config: ${configPath()}`);
             console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
             if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
-            if (config.name) console.log(`🏷  Name:   ${config.name}`);
+            if (name) console.log(`🏷  Name:   ${name}`);
             console.log();
 
             const { start } = await import("../daemon");
@@ -162,7 +161,7 @@ export function createApp(): Crust {
           console.log(`📡 Bot: ...${config.token.slice(-8)}  💬 ${config.chatId}\n`);
 
           const { sendReport } = await import("../reporter");
-          const ok = await sendReport(config.token, config.chatId, config.name);
+          const ok = await sendReport(config.token, config.chatId, name ?? undefined);
           console.log(ok ? "✅ Report sent!" : "❌ Failed to send report");
         })
     )
@@ -179,10 +178,9 @@ export function createApp(): Crust {
         console.log("📋 Configured Servers:");
         for (const s of servers) {
           const cfg = await loadConfig(s === "default" ? undefined : s);
-          const nameTag = cfg?.name ? ` (--name ${cfg.name})` : "";
           const interval = cfg?.interval ?? "?";
           const chatLabel = cfg?.chatId ? `  💬 ${cfg.chatId}` : "  ❌ not yet paired";
-          console.log(`   • ${s}${nameTag}`);
+          console.log(`   • ${s}`);
           console.log(`     ⏱ ${interval}s  ${chatLabel}`);
         }
       })
@@ -216,7 +214,7 @@ export function createApp(): Crust {
           }
 
           console.log(`⚠️  You are about to delete server config: "${rawName}"`);
-          console.log(`   📁 ${configFile(name)}`);
+          console.log(`   📁 ${configPath()}`);
           console.log(`   🤖 Bot: ...${cfg.token.slice(-8)}`);
           if (cfg.chatId) console.log(`   💬 Chat: ${cfg.chatId}`);
           console.log("\n   This action cannot be undone.\n");

@@ -1,8 +1,8 @@
 import { homedir } from "os";
 import { join } from "path";
-import { mkdir, readdir, unlink } from "fs/promises";
+import { mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
-import type { ServerMonConfig } from "../types";
+import type { ServerMonConfig, ServerEntry } from "../types";
 
 const CONFIG_DIR = join(homedir(), ".irsyadulibad", "servermon");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
@@ -11,16 +11,33 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-export function configFile(name?: string): string {
-  return name ? join(CONFIG_DIR, `config-${name}.json`) : CONFIG_FILE;
-}
-
-export function configPath(name?: string): string {
-  return configFile(name);
+export function configPath(): string {
+  return CONFIG_FILE;
 }
 
 export function configDir(): string {
   return CONFIG_DIR;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Internal helpers                                                   */
+/* ------------------------------------------------------------------ */
+
+async function readConfig(): Promise<ServerMonConfig | null> {
+  try {
+    const file = Bun.file(CONFIG_FILE);
+    if (!(await file.exists())) return null;
+    const data = (await file.json()) as ServerMonConfig;
+    if (!data?.servers || typeof data.servers !== "object") return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function writeConfig(config: ServerMonConfig): Promise<void> {
+  await mkdir(CONFIG_DIR, { recursive: true });
+  await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
 /* ------------------------------------------------------------------ */
@@ -31,54 +48,44 @@ export async function ensureConfigDir(): Promise<void> {
   await mkdir(CONFIG_DIR, { recursive: true });
 }
 
-export async function loadConfig(name?: string): Promise<ServerMonConfig | null> {
-  try {
-    const file = Bun.file(configFile(name));
-    if (!(await file.exists())) return null;
-    const data = await file.json();
-    if (!data?.token) return null;
-    return {
-      token: String(data.token),
-      interval: Math.max(30, parseInt(String(data.interval)) || 300),
-      chatId: data.chatId ? String(data.chatId) : undefined,
-      name: data.name ? String(data.name) : name,
-    };
-  } catch {
-    return null;
-  }
+export async function loadConfig(name?: string): Promise<ServerEntry | null> {
+  const cfg = await readConfig();
+  if (!cfg) return null;
+  const key = name ?? "default";
+  const entry = cfg.servers[key];
+  if (!entry?.token) return null;
+  return {
+    token: String(entry.token),
+    interval: Math.max(30, parseInt(String(entry.interval)) || 300),
+    chatId: entry.chatId ? String(entry.chatId) : undefined,
+  };
 }
 
-export async function saveConfig(config: ServerMonConfig): Promise<void> {
-  await ensureConfigDir();
-  await Bun.write(configFile(config.name), JSON.stringify(config, null, 2));
+export async function saveConfig(
+  entry: ServerEntry & { name?: string },
+): Promise<void> {
+  const cfg = (await readConfig()) ?? { servers: {} };
+  const key = entry.name ?? "default";
+  cfg.servers[key] = {
+    token: entry.token,
+    interval: entry.interval,
+    chatId: entry.chatId,
+  };
+  await writeConfig(cfg);
 }
 
 export async function deleteConfig(name?: string): Promise<boolean> {
-  const file = configFile(name);
-  if (!existsSync(file)) return false;
-  try {
-    await unlink(file);
-    return true;
-  } catch {
-    return false;
-  }
+  const cfg = await readConfig();
+  if (!cfg) return false;
+  const key = name ?? "default";
+  if (!cfg.servers[key]) return false;
+  delete cfg.servers[key];
+  await writeConfig(cfg);
+  return true;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Inventory                                                          */
-/* ------------------------------------------------------------------ */
-
 export async function listServers(): Promise<string[]> {
-  const names: string[] = [];
-  try {
-    const entries = await readdir(CONFIG_DIR);
-    for (const entry of entries) {
-      const match = entry.match(/^config-(.+)\.json$/);
-      if (match) names.push(match[1]!);
-    }
-  } catch {
-    // dir may not exist yet
-  }
-  if (existsSync(CONFIG_FILE)) names.unshift("default");
-  return names;
+  const cfg = await readConfig();
+  if (!cfg) return [];
+  return Object.keys(cfg.servers).sort();
 }

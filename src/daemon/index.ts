@@ -1,6 +1,6 @@
 import { sendReport } from "../reporter";
 import { saveConfig, loadConfig, listServers } from "../config";
-import type { NamedConfig } from "../types";
+import type { ServerEntry, NamedConfig } from "../types";
 
 /* ------------------------------------------------------------------ */
 /*  Environment variables (set by cli/)                                */
@@ -57,10 +57,10 @@ async function autoDetectChatId(token: string): Promise<string | null> {
 
 async function persistChatId(id: string, name?: string): Promise<void> {
   try {
-    const cfg = await loadConfig(name);
-    if (cfg) {
-      cfg.chatId = id;
-      await saveConfig(cfg);
+    const entry = await loadConfig(name);
+    if (entry) {
+      entry.chatId = id;
+      await saveConfig({ ...entry, name });
       console.log("💾 Chat ID saved to config");
     }
   } catch {
@@ -138,30 +138,30 @@ export async function startAll(): Promise<void> {
   console.log(`📋 Found ${servers.length} server(s) to monitor:\n`);
 
   const configs: NamedConfig[] = [];
-  for (const s of servers) {
-    const cfg = await loadConfig(s === "default" ? undefined : s);
-    if (!cfg) {
-      console.log(`   ⚠️  ${s}: config unreadable, skipping`);
+  for (const name of servers) {
+    const entry = await loadConfig(name);
+    if (!entry) {
+      console.log(`   ⚠️  ${name}: config unreadable, skipping`);
       continue;
     }
-    if (!cfg.chatId) {
+    if (!entry.chatId) {
       if (configs.length === 0) {
-        console.log(`🔍 ${s}: Chat ID not set — auto-detecting...`);
-        const detected = await autoDetectChatId(cfg.token);
+        console.log(`🔍 ${name}: Chat ID not set — auto-detecting...`);
+        const detected = await autoDetectChatId(entry.token);
         if (detected) {
-          cfg.chatId = detected;
-          await saveConfig({ ...cfg, chatId: detected });
-          console.log(`💾 ${s}: Chat ID ${detected} saved`);
+          entry.chatId = detected;
+          await saveConfig({ ...entry, name });
+          console.log(`💾 ${name}: Chat ID ${detected} saved`);
         } else {
-          console.log(`   ❌ ${s}: no chat ID yet. DM your bot first then restart.`);
+          console.log(`   ❌ ${name}: no chat ID yet. DM your bot first then restart.`);
           continue;
         }
       } else {
-        console.log(`   ❌ ${s}: no chat ID. Run 'servermon start --name ${s}' first.`);
+        console.log(`   ❌ ${name}: no chat ID. Run 'servermon start --name ${name}' first.`);
         continue;
       }
     }
-    configs.push({ name: s, cfg });
+    configs.push({ name, cfg: entry });
   }
 
   if (configs.length === 0) {
