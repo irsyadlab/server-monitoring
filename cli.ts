@@ -4,7 +4,14 @@
  * Handles first-time interactive setup and starts the monitoring daemon.
  */
 
-import { loadConfig, saveConfig, configPath, configFile, configDir, listServers, deleteConfig } from "./src/config";
+import {
+  loadConfig,
+  saveConfig,
+  configPath,
+  configFile,
+  listServers,
+  deleteConfig,
+} from "./src/config";
 
 function banner() {
   const c = {
@@ -14,15 +21,29 @@ function banner() {
     reset: "\x1b[0m",
   };
   console.log("");
-  console.log(`${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`);
-  console.log(`${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`);
-  console.log(`${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`);
-  console.log(`${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`);
-  console.log(`${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`);
+  console.log(
+    `${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`
+  );
   console.log("");
-  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(
+    `${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`
+  );
   console.log(`  🖥  Server Monitor Daemon  •  Telegram  •  Bun  •  TypeScript`);
-  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(
+    `${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`
+  );
   console.log(`${c.gold}                              by irsyadulibad${c.reset}`);
   console.log("");
 }
@@ -64,8 +85,18 @@ async function setupSystemd(): Promise<void> {
   const home = process.env.HOME ?? "~";
   const systemdDir = `${home}/.config/systemd/user`;
   await Bun.write(`${systemdDir}/.gitkeep`, ""); // ensure dir exists
-  try { await (Bun as any).mkdir?.(systemdDir, { recursive: true }); } catch { /* Bun.mkdir may not exist; fs fallback */ }
-  try { await import("node:fs").then(m => m.mkdirSync(systemdDir, { recursive: true })); } catch {}
+  try {
+    await (
+      Bun as unknown as { mkdir?: (path: string, opts: { recursive: boolean }) => Promise<void> }
+    ).mkdir?.(systemdDir, { recursive: true });
+  } catch {
+    /* Bun.mkdir may not exist; fs fallback */
+  }
+  try {
+    await import("node:fs").then((m) => m.mkdirSync(systemdDir, { recursive: true }));
+  } catch {
+    /* fs.mkdirSync fallback */
+  }
 
   const serviceFile = `${systemdDir}/servermon.service`;
   const serviceContent = `[Unit]
@@ -171,7 +202,9 @@ async function interactiveSetup(name?: string): Promise<void> {
   console.log(`   📁 ${configFile(name)}`);
   console.log(`   ⏱  Interval: ${interval}s (${label})`);
   const serverTag = name ? ` --name ${name}` : "";
-  console.log(`\n📡 Next step: DM your bot once on Telegram, then run \`servermon start${serverTag}\`.`);
+  console.log(
+    `\n📡 Next step: DM your bot once on Telegram, then run \`servermon start${serverTag}\`.`
+  );
 }
 
 /** Parse a --flag value from argv */
@@ -189,20 +222,22 @@ async function main() {
   // --- subcommand routing ---
   if (cmd === "setup") {
     banner();
-    const name = parseFlag(process.argv, "--name");
+    const name = parseFlag(process.argv, "--name") ?? undefined;
     await interactiveSetup(name);
     return;
   }
 
   if (cmd === "start") {
-    const name = parseFlag(process.argv, "--name") || undefined;
+    const name = parseFlag(process.argv, "--name") ?? undefined;
 
     if (name) {
       // Single server mode
       banner();
       const config = await loadConfig(name);
       if (!config) {
-        console.error(`❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`);
+        console.error(
+          `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+        );
         process.exit(1);
       }
       process.env["TELEGRAM_BOT_TOKEN"] = config.token;
@@ -229,12 +264,14 @@ async function main() {
     return;
   }
   if (cmd === "report") {
-    const name = parseFlag(process.argv, "--name") || undefined;
+    const name = parseFlag(process.argv, "--name") ?? undefined;
     const config = await loadConfig(name);
     if (!config) {
-      console.error(name
-        ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
-        : "❌ No config found. Run `servermon setup` first.");
+      console.error(
+        name
+          ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+          : "❌ No config found. Run `servermon setup` first."
+      );
       process.exit(1);
     }
     if (!config.chatId) {
@@ -324,15 +361,29 @@ async function main() {
     reset: "\x1b[0m",
   };
   console.log("");
-  console.log(`${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`);
-  console.log(`${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`);
-  console.log(`${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`);
-  console.log(`${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`);
-  console.log(`${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`);
+  console.log(
+    `${c.cyan}  ███████  ███████ ██████  ██    ██ ███████ ██████  ███    ███  ██████  ███    ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ██      ██      ██   ██ ██    ██ ██      ██   ██ ████  ████ ██    ██ ████   ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ███████ █████   ██████  ██    ██ █████   ██████  ██ ████ ██ ██    ██ ██ ██  ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}       ██ ██      ██   ██  ██  ██  ██      ██   ██ ██  ██  ██ ██    ██ ██  ██ ██${c.reset}`
+  );
+  console.log(
+    `${c.cyan}  ███████ ███████ ██   ██   ████   ███████ ██   ██ ██      ██  ██████  ██   ████${c.reset}`
+  );
   console.log("");
-  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(
+    `${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`
+  );
   console.log(`  🖥  Server Monitor Daemon  •  Telegram  •  Bun  •  TypeScript`);
-  console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
+  console.log(
+    `${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`
+  );
   console.log(`${c.gold}                              by irsyadulibad${c.reset}`);
   console.log("");
   console.log("Usage:  servermon <command> [--name <server>]");

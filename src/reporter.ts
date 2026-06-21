@@ -136,7 +136,11 @@ async function sendMessage(botToken: string, chatId: string, text: string): Prom
   });
 }
 
-export async function sendReport(botToken: string, chatId: string, serverName?: string): Promise<boolean> {
+export async function sendReport(
+  botToken: string,
+  chatId: string,
+  serverName?: string
+): Promise<boolean> {
   if (!botToken || !chatId) {
     console.error("❌ TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required.");
     return false;
