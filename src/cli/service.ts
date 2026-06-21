@@ -72,6 +72,9 @@ async function cmdInstall(): Promise<void> {
     process.exit(1);
   }
 
+  // Use bun directly as interpreter so systemd doesn't need bun in PATH
+  const execStart = `${bunPath} ${servermonPath} start`;
+
   console.log(`🔍 bun:       ${bunPath}`);
   console.log(`🔍 servermon: ${servermonPath}`);
   console.log(`📁 Config:    ${configPath()}`);
@@ -79,7 +82,7 @@ async function cmdInstall(): Promise<void> {
 
   await ensureSystemdDir();
 
-  const serviceContent = `[Unit]\nDescription=Server Monitor — Telegram system health reports\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nExecStart=${servermonPath} start\nRestart=always\nRestartSec=30\nEnvironment=NODE_ENV=production\n\n[Install]\nWantedBy=default.target\n`;
+  const serviceContent = `[Unit]\nDescription=Server Monitor — Telegram system health reports\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nExecStart=${execStart}\nRestart=always\nRestartSec=30\nEnvironment=NODE_ENV=production\n\n[Install]\nWantedBy=default.target\n`;
 
   await Bun.write(SERVICE_PATH, serviceContent);
   console.log(`📄 Written: ${SERVICE_PATH}`);
