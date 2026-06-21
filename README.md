@@ -68,15 +68,20 @@ That's it. The daemon auto-detects your chat ID, sends an initial report, then l
 ## 📖 Usage
 
 ```
-Usage:  servermon <command> [--name <server>]
+Usage:  servermon <command> [options]
 
 Commands:
   setup [--name <srv>]  First-time setup (bot token + interval) for a server
   start [--name <srv>]  Start the monitoring daemon for a server
   report [--name <srv>] Send a one-time report without starting the daemon
   list                  List all configured servers
-  delete --name <srv>   Delete a configured server
-  install-service       Install as systemd user service
+  delete <name>         Delete a configured server
+  service <sub>         Manage systemd service
+
+Options:
+  -n, --name     Server name
+  -h, --help     Show help
+  -v, --version  Show version number
 ```
 
 ### Examples
@@ -100,11 +105,11 @@ servermon report --name prod
 # List all configured servers
 servermon list
 
-# Delete a server config
-servermon delete --name prod
+# Delete a server config (interactive confirm)
+servermon delete prod
 
 # Force delete without confirmation
-servermon delete --name prod --yes
+servermon delete prod --yes
 ```
 
 ### 🌍 Multi-server mode
@@ -196,9 +201,10 @@ server-monitoring/
 │   │   └── index.ts
 │   ├── daemon/               # start(), startAll(), autoDetectChatId()
 │   │   └── index.ts
-│   └── cli/                  # CLI command routing + interactive setup + banner
+│   └── cli/                  # CLI command routing (CrustJS) + interactive setup + banner
 │       ├── banner.ts
-│       └── index.ts
+│       ├── index.ts
+│       └── service.ts        # systemd service subcommands
 ├── eslint.config.js
 ├── .prettierrc
 ├── package.json
@@ -240,8 +246,19 @@ For named servers, configs are stored separately:
 ## 📦 Deploy as systemd service
 
 ```bash
-# After installing globally
-servermon install-service
+# Install & start
+servermon service install
+
+# Check health
+servermon service status
+
+# View real-time logs
+servermon service logs
+
+# Stop / restart / uninstall
+servermon service stop
+servermon service restart
+servermon service uninstall --yes
 ```
 
 This creates a user-level systemd service at `~/.config/systemd/user/servermon.service` that runs `servermon start` (multi-server mode) and automatically restarts on failure.
@@ -275,6 +292,7 @@ sudo systemctl enable --now servermon
 - [Bun](https://bun.sh) — fast all-in-one JavaScript runtime
 - [TypeScript](https://www.typescriptlang.org/) — type safety
 - [Telegram Bot API](https://core.telegram.org/bots/api) — message delivery
+- [CrustJS](https://crustjs.com) — CLI framework (command routing, plugins, type-safe parsing)
 - [ESLint](https://eslint.org/) + [Prettier](https://prettier.io/) — code quality
 
 ---
