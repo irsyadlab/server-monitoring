@@ -25,7 +25,7 @@ function healthTag(m: SystemMetrics): string {
   return "✅ HEALTHY";
 }
 
-export function formatReportHTML(m: SystemMetrics): string {
+export function formatReportHTML(m: SystemMetrics, serverName?: string): string {
   const now = new Date().toLocaleString("id-ID", {
     timeZone: "Asia/Jakarta",
     day: "numeric",
@@ -36,10 +36,11 @@ export function formatReportHTML(m: SystemMetrics): string {
   });
 
   const tempStr = m.temperature !== null ? `  🌡 ${m.temperature.toFixed(0)}°C` : "";
+  const nameTag = serverName ? `  [${esc(serverName)}]` : "";
 
   // ── Header ──
   const header = [
-    `<b>🖥  ${esc(m.hostname)}</b>  —  ${healthTag(m)}`,
+    `<b>🖥  ${esc(m.hostname)}</b>${nameTag}  —  ${healthTag(m)}`,
     `📅 ${esc(now)}  │  ⏱ ${esc(formatUptime(m.uptime))}${tempStr}`,
     `🐧 ${esc(m.platform)} ${esc(m.arch)}  │  ${esc(m.cpu.model)}  (${m.cpu.cores}c)`,
   ];
@@ -135,14 +136,14 @@ async function sendMessage(botToken: string, chatId: string, text: string): Prom
   });
 }
 
-export async function sendReport(botToken: string, chatId: string): Promise<boolean> {
+export async function sendReport(botToken: string, chatId: string, serverName?: string): Promise<boolean> {
   if (!botToken || !chatId) {
     console.error("❌ TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required.");
     return false;
   }
 
   const m = await import("./monitor").then((x) => x.collectMetrics());
-  const report = formatReportHTML(m);
+  const report = formatReportHTML(m, serverName);
 
   // Telegram 4096 char limit — split on double newlines
   if (report.length > 4000) {

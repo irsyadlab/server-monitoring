@@ -1,10 +1,11 @@
 import { sendReport } from "./src/reporter";
-import { saveConfig } from "./src/config";
+import { saveConfig, loadConfig } from "./src/config";
 
 const botToken = process.env["TELEGRAM_BOT_TOKEN"] ?? "";
 let chatId = process.env["TELEGRAM_CHAT_ID"] ?? "";
 const rawInterval = process.env["MONITOR_INTERVAL"] ?? "300";
 const intervalSec = Math.max(30, parseInt(rawInterval) || 300);
+const serverName = process.env["SERVER_NAME"] ?? "";
 
 // --- Auto-detect chat ID ---
 async function autoDetectChatId(token: string): Promise<string | null> {
@@ -88,7 +89,7 @@ export async function start() {
 
   async function tick() {
     const start2 = Date.now();
-    const ok = await sendReport(botToken, chatId);
+    const ok = await sendReport(botToken, chatId, serverName || undefined);
     const elapsed = Date.now() - start2;
     const ts = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
     console.log(`[${ts}] ${ok ? "✅" : "❌"} ${elapsed}ms`);

@@ -1,6 +1,7 @@
 import { homedir } from "os";
 import { join } from "path";
-import { mkdir } from "fs/promises";
+import { mkdir, readdir } from "fs/promises";
+import { existsSync } from "fs";
 
 const CONFIG_DIR = join(homedir(), ".irsyadulibad", "servermon");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
@@ -9,15 +10,20 @@ export interface ServerMonConfig {
   token: string;
   interval: number;
   chatId?: string;
+  name?: string;
 }
 
 export async function ensureConfigDir(): Promise<void> {
   await mkdir(CONFIG_DIR, { recursive: true });
 }
 
-export async function loadConfig(): Promise<ServerMonConfig | null> {
+export function configFile(name?: string): string {
+  return name ? join(CONFIG_DIR, `config-${name}.json`) : CONFIG_FILE;
+}
+
+export async function loadConfig(name?: string): Promise<ServerMonConfig | null> {
   try {
-    const file = Bun.file(CONFIG_FILE);
+    const file = Bun.file(configFile(name));
     if (!(await file.exists())) return null;
     const data = await file.json();
     // Minimal validation
@@ -26,6 +32,7 @@ export async function loadConfig(): Promise<ServerMonConfig | null> {
       token: String(data.token),
       interval: Math.max(30, parseInt(String(data.interval)) || 300),
       chatId: data.chatId ? String(data.chatId) : undefined,
+      name: data.name ? String(data.name) : name,
     };
   } catch {
     return null;
@@ -34,13 +41,30 @@ export async function loadConfig(): Promise<ServerMonConfig | null> {
 
 export async function saveConfig(config: ServerMonConfig): Promise<void> {
   await ensureConfigDir();
-  await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
+  await Bun.write(configFile(config.name), JSON.stringify(config, null, 2));
 }
 
-export function configPath(): string {
-  return CONFIG_FILE;
+export function configPath(name?: string): string {
+  return configFile(name);
 }
 
 export function configDir(): string {
   return CONFIG_DIR;
+}
+
+/** List all named server configs */
+export async function listServers(): Promise<string[]> {
+  const names: string[] = [];
+  try {
+    const entries = await readdir(CONFIG_DIR);
+    for (const entry of entries) {
+      const match = entry.match(/^config-(.+)\.json$/);
+      if (match) names.push(match[1]!);
+    }
+  } catch {
+    // dir may not exist yet
+  }
+  // Always include default if exists
+  if (existsSync(CONFIG_FILE)) names.unshift("default");
+  return names;
 }

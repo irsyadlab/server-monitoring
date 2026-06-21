@@ -4,7 +4,7 @@
  * Handles first-time interactive setup and starts the monitoring daemon.
  */
 
-import { loadConfig, saveConfig, configPath, configDir } from "./src/config";
+import { loadConfig, saveConfig, configPath, configFile, configDir, listServers } from "./src/config";
 
 function banner() {
   const c = {
@@ -118,9 +118,10 @@ WantedBy=default.target
   console.log("   journalctl --user -u servermon -f    # watch logs");
 }
 
-async function interactiveSetup(): Promise<void> {
-  console.log("🖥  Server Monitor — First Time Setup");
-  console.log(`   Config will be saved to: ${configDir()}\n`);
+async function interactiveSetup(name?: string): Promise<void> {
+  const tag = name ? ` [${name}]` : "";
+  console.log(`🖥  Server Monitor — First Time Setup${tag}`);
+  console.log(`   Config will be saved to: ${configFile(name)}\n`);
 
   const token = prompt("🔑 Telegram Bot Token: ")?.trim();
   if (!token) {
@@ -165,11 +166,21 @@ async function interactiveSetup(): Promise<void> {
       ? `${(interval / 3600).toFixed(0)} hour(s)`
       : `${(interval / 60).toFixed(0)} min`;
 
-  await saveConfig({ token, interval });
+  await saveConfig({ token, interval, name });
   console.log(`\n✅ Config saved!`);
-  console.log(`   📁 ${configPath()}`);
+  console.log(`   📁 ${configFile(name)}`);
   console.log(`   ⏱  Interval: ${interval}s (${label})`);
-  console.log(`\n📡 Next step: DM your bot once on Telegram, then run \`servermon\`.`);
+  const serverTag = name ? ` --name ${name}` : "";
+  console.log(`\n📡 Next step: DM your bot once on Telegram, then run \`servermon start${serverTag}\`.`);
+}
+
+/** Parse a --flag value from argv */
+function parseFlag(argv: string[], flag: string): string | null {
+  const idx = argv.indexOf(flag);
+  if (idx === -1 || idx + 1 >= argv.length) return null;
+  const val = argv[idx + 1]!;
+  if (val.startsWith("--")) return null;
+  return val;
 }
 
 async function main() {
@@ -178,28 +189,52 @@ async function main() {
   // --- subcommand routing ---
   if (cmd === "setup") {
     banner();
-    await interactiveSetup();
+    const name = parseFlag(process.argv, "--name");
+    await interactiveSetup(name);
     return;
   }
 
   if (cmd === "start") {
     banner();
-    const config = await loadConfig();
+    const name = parseFlag(process.argv, "--name") || undefined;
+    const config = await loadConfig(name);
     if (!config) {
-      console.error("❌ No config found. Run `servermon setup` first.");
+      console.error(name
+        ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+        : "❌ No config found. Run `servermon setup` first.");
       process.exit(1);
     }
     process.env["TELEGRAM_BOT_TOKEN"] = config.token;
     process.env["MONITOR_INTERVAL"] = String(config.interval);
     if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
+    if (config.name) process.env["SERVER_NAME"] = config.name;
 
-    console.log(`📁 Config: ${configPath()}`);
+    console.log(`📁 Config: ${configPath(config.name)}`);
     console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
     if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
     console.log();
 
     const { start } = await import("./index.ts");
     await start();
+    return;
+  }
+
+  if (cmd === "list") {
+    const servers = await listServers();
+    if (servers.length === 0) {
+      console.log("📭 No configured servers.");
+      console.log("   Run `servermon setup` or `servermon setup --name <name>` first.");
+      return;
+    }
+    console.log("📋 Configured Servers:");
+    for (const s of servers) {
+      const cfg = await loadConfig(s === "default" ? undefined : s);
+      const nameTag = cfg?.name ? ` (--name ${cfg.name})` : "";
+      const interval = cfg?.interval ?? "?";
+      const chatLabel = cfg?.chatId ? `  💬 ${cfg.chatId}` : "  ❌ not yet paired";
+      console.log(`   • ${s}${nameTag}`);
+      console.log(`     ⏱ ${interval}s  ${chatLabel}`);
+    }
     return;
   }
 
@@ -227,16 +262,19 @@ async function main() {
   console.log(`${c.gray}  ─────────────────────────────────────────────────────────────────────${c.reset}`);
   console.log(`${c.gold}                              by irsyadulibad${c.reset}`);
   console.log("");
-  console.log("Usage:  servermon <command>");
+  console.log("Usage:  servermon <command> [--name <server>]");
   console.log();
   console.log("Commands:");
-  console.log("  setup            First-time setup (bot token + interval)");
-  console.log("  start            Start the monitoring daemon");
-  console.log("  install-service  Install as systemd user service");
+  console.log("  setup [--name <srv>]  First-time setup (bot token + interval) for a server");
+  console.log("  start [--name <srv>]  Start the monitoring daemon for a server");
+  console.log("  list                  List all configured servers");
+  console.log("  install-service       Install as systemd user service");
   console.log();
   console.log("Examples:");
   console.log("  servermon setup");
-  console.log("  servermon start");
+  console.log("  servermon setup --name prod");
+  console.log("  servermon start --name staging");
+  console.log("  servermon list");
   console.log("  servermon install-service");
 }
 
