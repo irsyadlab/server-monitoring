@@ -1,6 +1,6 @@
 import { homedir } from "os";
 import { join } from "path";
-import { mkdir, readdir } from "fs/promises";
+import { mkdir, readdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 
 const CONFIG_DIR = join(homedir(), ".irsyadulibad", "servermon");
@@ -67,4 +67,16 @@ export async function listServers(): Promise<string[]> {
   // Always include default if exists
   if (existsSync(CONFIG_FILE)) names.unshift("default");
   return names;
+}
+
+/** Delete a server config file */
+export async function deleteConfig(name?: string): Promise<boolean> {
+  const file = configFile(name);
+  if (!existsSync(file)) return false;
+  try {
+    await unlink(file);
+    return true;
+  } catch {
+    return false;
+  }
 }

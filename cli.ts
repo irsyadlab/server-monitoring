@@ -4,7 +4,7 @@
  * Handles first-time interactive setup and starts the monitoring daemon.
  */
 
-import { loadConfig, saveConfig, configPath, configFile, configDir, listServers } from "./src/config";
+import { loadConfig, saveConfig, configPath, configFile, configDir, listServers, deleteConfig } from "./src/config";
 
 function banner() {
   const c = {
@@ -252,6 +252,46 @@ async function main() {
     return;
   }
 
+  if (cmd === "delete") {
+    const rawName = parseFlag(process.argv, "--name");
+    if (!rawName) {
+      console.error("❌ Specify which server to delete: `servermon delete --name <server>`");
+      console.log("   Use `servermon list` to see available servers.");
+      process.exit(1);
+    }
+
+    const name = rawName === "default" ? undefined : rawName;
+    const cfg = await loadConfig(name);
+    if (!cfg) {
+      console.error(`❌ No server found with name "${rawName}".`);
+      process.exit(1);
+    }
+
+    // Confirmation
+    console.log(`⚠️  You are about to delete server config: "${rawName}"`);
+    console.log(`   📁 ${configFile(name)}`);
+    console.log(`   🤖 Bot: ...${cfg.token.slice(-8)}`);
+    if (cfg.chatId) console.log(`   💬 Chat: ${cfg.chatId}`);
+    console.log();
+    console.log("   This action cannot be undone.");
+    console.log();
+
+    const confirmFlag = parseFlag(process.argv, "--yes") || parseFlag(process.argv, "-y");
+    if (!confirmFlag) {
+      console.error("   To confirm, run: `servermon delete --name <server> --yes`");
+      process.exit(1);
+    }
+
+    const ok = await deleteConfig(name);
+    if (ok) {
+      console.log(`✅ Server "${rawName}" deleted.`);
+    } else {
+      console.error(`❌ Failed to delete server "${rawName}".`);
+      process.exit(1);
+    }
+    return;
+  }
+
   if (cmd === "list") {
     const servers = await listServers();
     if (servers.length === 0) {
@@ -302,6 +342,7 @@ async function main() {
   console.log("  start [--name <srv>]  Start the monitoring daemon for a server");
   console.log("  report [--name <srv>] Send a one-time report without starting the daemon");
   console.log("  list                  List all configured servers");
+  console.log("  delete --name <srv>   Delete a configured server");
   console.log("  install-service       Install as systemd user service");
   console.log();
   console.log("Examples:");
@@ -310,6 +351,7 @@ async function main() {
   console.log("  servermon start --name staging");
   console.log("  servermon report --name prod");
   console.log("  servermon list");
+  console.log("  servermon delete --name prod");
   console.log("  servermon install-service");
 }
 
