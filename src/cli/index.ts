@@ -137,6 +137,7 @@ export function createApp(): Crust {
           }
         })
     )
+
     /* ---- report ---- */
     .command("report", (cmd) =>
       cmd
@@ -165,6 +166,7 @@ export function createApp(): Crust {
           console.log(ok ? "✅ Report sent!" : "❌ Failed to send report");
         })
     )
+
     /* ---- list ---- */
     .command("list", (cmd) =>
       cmd.meta({ description: "List all configured servers" }).run(async () => {
@@ -185,10 +187,12 @@ export function createApp(): Crust {
         }
       })
     )
+
     /* ---- delete ---- */
     .command("delete", (cmd) =>
       cmd
         .meta({ description: "Delete a configured server" })
+        .args([{ name: "name", type: "string", description: "Server name" }] as const)
         .flags({
           yes: {
             type: "boolean",
@@ -196,10 +200,10 @@ export function createApp(): Crust {
             short: "y",
           },
         })
-        .run(async ({ flags }) => {
-          const rawName = flags.name;
+        .run(async ({ args, flags }) => {
+          const rawName = args.name ?? flags.name;
           if (!rawName) {
-            console.error("❌ Specify which server to delete: `servermon delete --name <server>`");
+            console.error("❌ Usage: servermon delete <name>");
             console.log("   Use `servermon list` to see available servers.");
             process.exit(1);
           }
@@ -218,8 +222,11 @@ export function createApp(): Crust {
           console.log("\n   This action cannot be undone.\n");
 
           if (!flags.yes) {
-            console.error("   To confirm, run: `servermon delete --name <server> --yes`");
-            process.exit(1);
+            const answer = prompt("   Type 'yes' to confirm: ")?.trim().toLowerCase();
+            if (answer !== "yes") {
+              console.log("❌ Cancelled.");
+              return;
+            }
           }
 
           const ok = await deleteConfig(name);
@@ -231,8 +238,10 @@ export function createApp(): Crust {
           }
         })
     )
+
     /* ---- service ---- */
     .command("service", (cmd) => serviceCmd(cmd))
+
     /* ---- deprecated aliases (hidden) ---- */
     .command("install-service", (cmd) =>
       cmd.meta({ hidden: true }).run(async () => {
