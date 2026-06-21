@@ -1,3 +1,4 @@
+import type { Crust } from "@crustjs/core";
 import { loadConfig, configPath } from "../config";
 
 const HOME = process.env.HOME ?? "~";
@@ -49,7 +50,7 @@ function getServiceStatus(): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Subcommands                                                        */
+/*  Subcommand handlers                                                */
 /* ------------------------------------------------------------------ */
 
 async function cmdInstall(): Promise<void> {
@@ -96,7 +97,6 @@ WantedBy=default.target
   await Bun.write(SERVICE_PATH, serviceContent);
   console.log(`📄 Written: ${SERVICE_PATH}`);
 
-  // Reload, enable, start
   const steps = [
     ["daemon-reload"],
     ["enable", SERVICE_NAME],
@@ -133,7 +133,6 @@ function cmdStatus(): void {
   const status = getServiceStatus();
   console.log(status);
 
-  // Quick health summary
   const { out: activeState } = sysctl("is-active", SERVICE_NAME);
   const { out: enabledState } = sysctl("is-enabled", SERVICE_NAME);
 
@@ -174,13 +173,6 @@ function cmdLogs(): void {
 }
 
 async function cmdUninstall(): Promise<void> {
-  const confirmFlag = process.argv.includes("--yes") || process.argv.includes("-y");
-  if (!confirmFlag) {
-    console.log("⚠️  This will stop and remove the servermon service.");
-    console.log("   To confirm, run: `servermon service uninstall --yes`");
-    return;
-  }
-
   console.log("🗑  Uninstalling servermon service...");
 
   const steps = [
@@ -194,7 +186,6 @@ async function cmdUninstall(): Promise<void> {
     if (ok) console.log(`✅ ${label}`);
   }
 
-  // Remove service file
   try {
     await import("fs/promises").then((m) => m.unlink(SERVICE_PATH));
     console.log("✅ Service file removed");
@@ -202,18 +193,79 @@ async function cmdUninstall(): Promise<void> {
     console.log("⚠️  Service file not found or already removed");
   }
 
-  // Reload
   sysctl("daemon-reload");
   console.log("✅ Daemon reloaded");
   console.log("\n✅ Service uninstalled.");
 }
 
 /* ------------------------------------------------------------------ */
-/*  Router                                                             */
+/*  CrustJS service command (exported for use in index.ts)             */
 /* ------------------------------------------------------------------ */
 
-export async function serviceRouter(): Promise<void> {
-  const sub = process.argv[3]; // servermon service <subcommand>
+export const serviceCmd: Parameters<Crust["command"]>[1] = (cmd) =>
+  cmd
+    .meta({ description: "Manage systemd service" })
+    .command("install", (sub) =>
+      sub
+        .meta({ description: "Install systemd service & start" })
+        .run(async () => {
+          await cmdInstall();
+        })
+    )
+    .command("status", (sub) =>
+      sub
+        .meta({ description: "Check service health" })
+        .run(() => {
+          cmdStatus();
+        })
+    )
+    .command("stop", (sub) =>
+      sub
+        .meta({ description: "Stop the service" })
+        .run(() => {
+          cmdStop();
+        })
+    )
+    .command("restart", (sub) =>
+      sub
+        .meta({ description: "Restart the service" })
+        .run(() => {
+          cmdRestart();
+        })
+    )
+    .command("logs", (sub) =>
+      sub
+        .meta({ description: "Follow real-time logs" })
+        .run(() => {
+          cmdLogs();
+        })
+    )
+    .command("uninstall", (sub) =>
+      sub
+        .meta({ description: "Stop, disable, & remove service" })
+        .flags({
+          yes: {
+            type: "boolean",
+            description: "Skip confirmation",
+            short: "y",
+          },
+        })
+        .run(async ({ flags }) => {
+          if (!flags.yes) {
+            console.log("⚠️  This will stop and remove the servermon service.");
+            console.log("   To confirm, run: `servermon service uninstall --yes`");
+            return;
+          }
+          await cmdUninstall();
+        })
+    );
+
+/* ------------------------------------------------------------------ */
+/*  Legacy router (kept for backward compat)                           */
+/* ------------------------------------------------------------------ */
+
+export async function serviceRouter(subs?: string[]): Promise<void> {
+  const sub = subs?.[0] ?? process.argv[3];
 
   switch (sub) {
     case "install":

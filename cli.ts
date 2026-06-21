@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Server Monitor — CLI wrapper.
- * Just delegates to src/cli/index.ts.
+ * Server Monitor — CLI entry point.
+ * Uses @crustjs/core for command parsing and routing.
  */
 import { main } from "./src/cli";
 

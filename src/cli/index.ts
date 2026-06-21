@@ -1,3 +1,5 @@
+import { Crust } from "@crustjs/core";
+import { helpPlugin, versionPlugin, didYouMeanPlugin } from "@crustjs/plugins";
 import {
   loadConfig,
   saveConfig,
@@ -6,12 +8,13 @@ import {
   listServers,
   deleteConfig,
 } from "../config";
-import { printBanner, printHelp } from "./banner";
-import { serviceRouter } from "./service";
+import { printBanner } from "./banner";
+import { serviceCmd } from "./service";
+import pkg from "../../package.json";
 
-// ─────────────────────────────────────
-//  Interactive setup
-// ─────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 async function interactiveSetup(name?: string): Promise<void> {
   const tag = name ? ` [${name}]` : "";
@@ -71,15 +74,201 @@ async function interactiveSetup(name?: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Utilities                                                          */
+/*  App definition                                                     */
 /* ------------------------------------------------------------------ */
 
-export function parseFlag(argv: string[], flag: string): string | null {
-  const idx = argv.indexOf(flag);
-  if (idx === -1 || idx + 1 >= argv.length) return null;
-  const val = argv[idx + 1]!;
-  if (val.startsWith("--")) return null;
-  return val;
+export function createApp(): Crust {
+  const app = new Crust("servermon")
+    .use(helpPlugin())
+    .use(versionPlugin(pkg.version))
+    .use(didYouMeanPlugin())
+    .meta({
+      description:
+        "Lightweight server monitoring daemon — collect system metrics and send structured reports to Telegram",
+    })
+    .flags({
+      name: {
+        type: "string",
+        description: "Server name",
+        short: "n",
+        inherit: true,
+      },
+    })
+    .run(() => {
+      // No subcommand → show available commands
+      console.log("Usage:  servermon <command> [--name <server>]\n");
+      console.log("Commands:");
+      console.log("  setup      First-time setup (bot token + interval)");
+      console.log("  start      Start the monitoring daemon");
+      console.log("  report     Send a one-time report without starting the daemon");
+      console.log("  list       List all configured servers");
+      console.log("  delete     Delete a configured server");
+      console.log("  service    Manage systemd service");
+      console.log("\n  Run `servermon <command> --help` for details.");
+    })
+    /* ---- setup ---- */
+    .command("setup", (cmd) =>
+      cmd
+        .meta({ description: "First-time setup (bot token + interval)" })
+        .run(async ({ flags }) => {
+          await interactiveSetup(flags.name);
+        })
+    )
+    /* ---- start ---- */
+    .command("start", (cmd) =>
+      cmd
+        .meta({ description: "Start the monitoring daemon" })
+        .run(async ({ flags }) => {
+          const name = flags.name;
+
+          if (name) {
+            const config = await loadConfig(name);
+            if (!config) {
+              console.error(
+                `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+              );
+              process.exit(1);
+            }
+            process.env["TELEGRAM_BOT_TOKEN"] = config.token;
+            process.env["MONITOR_INTERVAL"] = String(config.interval);
+            if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
+            if (config.name) process.env["SERVER_NAME"] = config.name;
+
+            console.log(`📁 Config: ${configPath(config.name)}`);
+            console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
+            if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
+            if (config.name) console.log(`🏷  Name:   ${config.name}`);
+            console.log();
+
+            const { start } = await import("../daemon");
+            await start();
+          } else {
+            console.log("  🌐 Multi-server mode — monitoring all configured servers\n");
+            const { startAll } = await import("../daemon");
+            await startAll();
+          }
+        })
+    )
+    /* ---- report ---- */
+    .command("report", (cmd) =>
+      cmd
+        .meta({ description: "Send a one-time report without starting the daemon" })
+        .run(async ({ flags }) => {
+          const name = flags.name;
+          const config = await loadConfig(name);
+          if (!config) {
+            console.error(
+              name
+                ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
+                : "❌ No config found. Run `servermon setup` first."
+            );
+            process.exit(1);
+          }
+          if (!config.chatId) {
+            console.error("❌ Chat ID not set. Run `servermon start` first to auto-detect.");
+            process.exit(1);
+          }
+
+          console.log(`📤 Sending one-time report${name ? ` for [${name}]` : ""}...`);
+          console.log(`📡 Bot: ...${config.token.slice(-8)}  💬 ${config.chatId}\n`);
+
+          const { sendReport } = await import("../reporter");
+          const ok = await sendReport(config.token, config.chatId, config.name);
+          console.log(ok ? "✅ Report sent!" : "❌ Failed to send report");
+        })
+    )
+    /* ---- list ---- */
+    .command("list", (cmd) =>
+      cmd.meta({ description: "List all configured servers" }).run(async () => {
+        const servers = await listServers();
+        if (servers.length === 0) {
+          console.log("📭 No configured servers.");
+          console.log("   Run `servermon setup` or `servermon setup --name <name>` first.");
+          return;
+        }
+        console.log("📋 Configured Servers:");
+        for (const s of servers) {
+          const cfg = await loadConfig(s === "default" ? undefined : s);
+          const nameTag = cfg?.name ? ` (--name ${cfg.name})` : "";
+          const interval = cfg?.interval ?? "?";
+          const chatLabel = cfg?.chatId ? `  💬 ${cfg.chatId}` : "  ❌ not yet paired";
+          console.log(`   • ${s}${nameTag}`);
+          console.log(`     ⏱ ${interval}s  ${chatLabel}`);
+        }
+      })
+    )
+    /* ---- delete ---- */
+    .command("delete", (cmd) =>
+      cmd
+        .meta({ description: "Delete a configured server" })
+        .flags({
+          yes: {
+            type: "boolean",
+            description: "Skip confirmation",
+            short: "y",
+          },
+        })
+        .run(async ({ flags }) => {
+          const rawName = flags.name;
+          if (!rawName) {
+            console.error("❌ Specify which server to delete: `servermon delete --name <server>`");
+            console.log("   Use `servermon list` to see available servers.");
+            process.exit(1);
+          }
+
+          const name = rawName === "default" ? undefined : rawName;
+          const cfg = await loadConfig(name);
+          if (!cfg) {
+            console.error(`❌ No server found with name "${rawName}".`);
+            process.exit(1);
+          }
+
+          console.log(`⚠️  You are about to delete server config: "${rawName}"`);
+          console.log(`   📁 ${configFile(name)}`);
+          console.log(`   🤖 Bot: ...${cfg.token.slice(-8)}`);
+          if (cfg.chatId) console.log(`   💬 Chat: ${cfg.chatId}`);
+          console.log("\n   This action cannot be undone.\n");
+
+          if (!flags.yes) {
+            console.error("   To confirm, run: `servermon delete --name <server> --yes`");
+            process.exit(1);
+          }
+
+          const ok = await deleteConfig(name);
+          if (ok) {
+            console.log(`✅ Server "${rawName}" deleted.`);
+          } else {
+            console.error(`❌ Failed to delete server "${rawName}".`);
+            process.exit(1);
+          }
+        })
+    )
+    /* ---- service ---- */
+    .command("service", (cmd) => serviceCmd(cmd))
+    /* ---- deprecated aliases (hidden) ---- */
+    .command("install-service", (cmd) =>
+      cmd.meta({ hidden: true }).run(async () => {
+        console.log("ℹ️  This command is deprecated. Use: `servermon service install`");
+        const { serviceRouter } = await import("./service");
+        await serviceRouter(["install"]);
+      })
+    )
+    .command("--install-service", (cmd) =>
+      cmd.meta({ hidden: true }).run(async () => {
+        console.log("ℹ️  This command is deprecated. Use: `servermon service install`");
+        const { serviceRouter } = await import("./service");
+        await serviceRouter(["install"]);
+      })
+    )
+    .command("--setup-systemd", (cmd) =>
+      cmd.meta({ hidden: true }).run(async () => {
+        console.log("ℹ️  This command is deprecated. Use: `servermon service install`");
+        const { serviceRouter } = await import("./service");
+        await serviceRouter(["install"]);
+      })
+    );
+
+  return app;
 }
 
 /* ------------------------------------------------------------------ */
@@ -87,142 +276,7 @@ export function parseFlag(argv: string[], flag: string): string | null {
 /* ------------------------------------------------------------------ */
 
 export async function main(): Promise<void> {
-  const cmd = process.argv[2];
-
-  if (cmd === "setup") {
-    printBanner();
-    const name = parseFlag(process.argv, "--name") ?? undefined;
-    await interactiveSetup(name);
-    return;
-  }
-
-  if (cmd === "start") {
-    const name = parseFlag(process.argv, "--name") ?? undefined;
-
-    if (name) {
-      printBanner();
-      const config = await loadConfig(name);
-      if (!config) {
-        console.error(
-          `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
-        );
-        process.exit(1);
-      }
-      process.env["TELEGRAM_BOT_TOKEN"] = config.token;
-      process.env["MONITOR_INTERVAL"] = String(config.interval);
-      if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
-      if (config.name) process.env["SERVER_NAME"] = config.name;
-
-      console.log(`📁 Config: ${configPath(config.name)}`);
-      console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
-      if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
-      if (config.name) console.log(`🏷  Name:   ${config.name}`);
-      console.log();
-
-      const { start } = await import("../daemon");
-      await start();
-    } else {
-      printBanner();
-      console.log("  🌐 Multi-server mode — monitoring all configured servers\n");
-      const { startAll } = await import("../daemon");
-      await startAll();
-    }
-    return;
-  }
-
-  if (cmd === "report") {
-    const name = parseFlag(process.argv, "--name") ?? undefined;
-    const config = await loadConfig(name);
-    if (!config) {
-      console.error(
-        name
-          ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
-          : "❌ No config found. Run `servermon setup` first."
-      );
-      process.exit(1);
-    }
-    if (!config.chatId) {
-      console.error("❌ Chat ID not set. Run `servermon start` first to auto-detect.");
-      process.exit(1);
-    }
-
-    console.log(`📤 Sending one-time report${name ? ` for [${name}]` : ""}...`);
-    console.log(`📡 Bot: ...${config.token.slice(-8)}  💬 ${config.chatId}\n`);
-
-    const { sendReport } = await import("../reporter");
-    const ok = await sendReport(config.token, config.chatId, config.name);
-    console.log(ok ? "✅ Report sent!" : "❌ Failed to send report");
-    return;
-  }
-
-  if (cmd === "delete") {
-    const rawName = parseFlag(process.argv, "--name");
-    if (!rawName) {
-      console.error("❌ Specify which server to delete: `servermon delete --name <server>`");
-      console.log("   Use `servermon list` to see available servers.");
-      process.exit(1);
-    }
-
-    const name = rawName === "default" ? undefined : rawName;
-    const cfg = await loadConfig(name);
-    if (!cfg) {
-      console.error(`❌ No server found with name "${rawName}".`);
-      process.exit(1);
-    }
-
-    console.log(`⚠️  You are about to delete server config: "${rawName}"`);
-    console.log(`   📁 ${configFile(name)}`);
-    console.log(`   🤖 Bot: ...${cfg.token.slice(-8)}`);
-    if (cfg.chatId) console.log(`   💬 Chat: ${cfg.chatId}`);
-    console.log("\n   This action cannot be undone.\n");
-
-    const confirmFlag = parseFlag(process.argv, "--yes") || parseFlag(process.argv, "-y");
-    if (!confirmFlag) {
-      console.error("   To confirm, run: `servermon delete --name <server> --yes`");
-      process.exit(1);
-    }
-
-    const ok = await deleteConfig(name);
-    if (ok) {
-      console.log(`✅ Server "${rawName}" deleted.`);
-    } else {
-      console.error(`❌ Failed to delete server "${rawName}".`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd === "list") {
-    const servers = await listServers();
-    if (servers.length === 0) {
-      console.log("📭 No configured servers.");
-      console.log("   Run `servermon setup` or `servermon setup --name <name>` first.");
-      return;
-    }
-    console.log("📋 Configured Servers:");
-    for (const s of servers) {
-      const cfg = await loadConfig(s === "default" ? undefined : s);
-      const nameTag = cfg?.name ? ` (--name ${cfg.name})` : "";
-      const interval = cfg?.interval ?? "?";
-      const chatLabel = cfg?.chatId ? `  💬 ${cfg.chatId}` : "  ❌ not yet paired";
-      console.log(`   • ${s}${nameTag}`);
-      console.log(`     ⏱ ${interval}s  ${chatLabel}`);
-    }
-    return;
-  }
-
-  if (cmd === "service") {
-    await serviceRouter();
-    return;
-  }
-
-  // --- backward compat ---
-  if (cmd === "install-service" || cmd === "--install-service" || cmd === "--setup-systemd") {
-    console.log("ℹ️  This command is deprecated. Use: `servermon service install`");
-    await serviceRouter();
-    return;
-  }
-
-  // --- no/invalid subcommand → help ---
-  printHelp();
+  printBanner();
+  const app = createApp();
+  await app.execute();
 }
