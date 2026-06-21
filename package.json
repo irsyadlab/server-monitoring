@@ -8,6 +8,9 @@
     "servermon": "./cli.ts"
   },
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "bun index.ts",
     "build": "bun build --compile index.ts --outfile server-monitor",
