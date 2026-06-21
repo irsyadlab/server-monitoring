@@ -14,15 +14,17 @@
 
 ## ✨ Features
 
-| Category             | What it tracks                                                 |
-| -------------------- | -------------------------------------------------------------- |
-| 💻 **CPU**           | Model, core count, usage %, load average (1/5/15 min)          |
-| 🧠 **RAM**           | Used / total, usage %, swap usage                              |
-| 💾 **Disk**          | Per-mount used / total, usage % — deduplicated                 |
-| 🌐 **Network**       | RX / TX rate (bytes/sec, sampled over 1s)                      |
-| 🌡 **Temperature**   | CPU package temp via thermal zones (`/sys/class/thermal`)      |
-| 📊 **Top Processes** | Top 5 by CPU % — PID, name, CPU %, MEM %                       |
-| 🚨 **Alerts**        | Auto-flag when CPU > 85%, RAM > 90%, disk > 90%, or swap > 50% |
+| Category           | What it tracks                                                 |
+| ------------------ | -------------------------------------------------------------- |
+| 💻 **CPU**         | Model, core count, usage %, load average (1/5/15 min)          |
+| 🧠 **RAM**         | Used / total, usage %, swap usage                              |
+| 💾 **Disk**        | Per-mount used / total, usage % — deduplicated                 |
+| 🌐 **Network**     | RX / TX rate (bytes/sec, sampled over 1s)                      |
+| 🌡 **Temperature** | CPU package temp via thermal zones (`/sys/class/thermal`)      |
+| 📊 **Top Processes** | Top 5 by CPU % — PID, name, CPU %, MEM %                     |
+| 🚨 **Alerts**      | Auto-flag when CPU > 85%, RAM > 90%, disk > 90%, or swap > 50% |
+| 🌍 **Multi-server** | Monitor multiple servers with one bot via `--name` flag        |
+| ⏱ **One-shot report** | Send a report on demand without starting the daemon       |
 
 Each report is color-coded with 🟢🟡🔴 health indicators and visual bar charts.
 
@@ -39,7 +41,7 @@ bun i -g @irsyadulibad/servermon
 ### First run — interactive setup
 
 ```bash
-servermon
+servermon setup
 ```
 
 You'll be prompted for:
@@ -56,30 +58,73 @@ DM your bot **once** (any message). The daemon auto-detects your chat ID.
 ### Start monitoring
 
 ```bash
-servermon
+servermon start
 ```
 
 That's it. The daemon auto-detects your chat ID, sends an initial report, then loops.
 
 ---
 
-## 🛠 Development
+## 📖 Usage
+
+```
+Usage:  servermon <command> [--name <server>]
+
+Commands:
+  setup [--name <srv>]  First-time setup (bot token + interval) for a server
+  start [--name <srv>]  Start the monitoring daemon for a server
+  report [--name <srv>] Send a one-time report without starting the daemon
+  list                  List all configured servers
+  delete --name <srv>   Delete a configured server
+  install-service       Install as systemd user service
+```
+
+### Examples
 
 ```bash
-git clone https://github.com/irsyadlab/server-monitoring.git
-cd server-monitoring
-bun install
+# Basic setup
+servermon setup
 
-# Run in dev mode
-bun start
+# Setup with a server name (for multi-server)
+servermon setup --name prod
 
-# Global link (for testing)
-bun link
-servermon
+# Start monitoring a specific server
+servermon start --name staging
 
-# Unlink
-bun unlink
+# Start monitoring ALL configured servers at once
+servermon start
+
+# Send a one-time report (daemon not required)
+servermon report --name prod
+
+# List all configured servers
+servermon list
+
+# Delete a server config
+servermon delete --name prod
+
+# Force delete without confirmation
+servermon delete --name prod --yes
 ```
+
+### 🌍 Multi-server mode
+
+`servermon start` (without `--name`) automatically runs **all configured servers** in a single daemon process — each server gets its own config, but they share one process and interval.
+
+```
+┌─────────────────────────────┐
+│  servermon start            │
+│  (multi-server daemon)      │
+│                             │
+│  ├─ default    → Telegram   │
+│  ├─ prod       → Telegram   │
+│  └─ staging    → Telegram   │
+└─────────────────────────────┘
+```
+
+Reports appear with the server name in the header:
+> 🖥 **server01** [**prod**] — ✅ HEALTHY
+> 🖥 **server02** [**staging**] — ⚠️ WARNING
 
 ---
 
@@ -111,19 +156,24 @@ bun unlink
 ✨ All systems normal
 ```
 
-When thresholds are crossed, alerts appear inline.
+When thresholds are crossed, alerts appear inline:
+```
+🚨 CRITICAL
+🔴 RAM hampir penuh: 91.2%
+🔴 Disk /: 91%
+```
 
 ---
 
 ## 🔧 Scripts
 
-| Command          | Description                                    |
-| ---------------- | ---------------------------------------------- |
-| `bun start`      | Run the daemon in dev mode                     |
-| `bun run build`  | Compile standalone binary → `./server-monitor` |
-| `bun run lint`   | Run ESLint                                     |
-| `bun run format` | Format with Prettier                           |
-| `bun run check`  | Format check + lint (CI-ready)                 |
+| Command                | Description                                    |
+| ---------------------- | ---------------------------------------------- |
+| `bun start`            | Run the daemon in dev mode                     |
+| `bun run build`        | Compile standalone binary → `./server-monitor` |
+| `bun run lint`         | Run ESLint                                     |
+| `bun run format`       | Format with Prettier                           |
+| `bun run check`        | Format check + lint (CI-ready)                 |
 
 ---
 
@@ -131,12 +181,22 @@ When thresholds are crossed, alerts appear inline.
 
 ```
 server-monitoring/
-├── cli.ts                # Global binary entry (interactive setup + launcher)
-├── index.ts              # Daemon core (start/loop/report)
+├── cli.ts                    # CLI wrapper (delegates to src/cli)
+├── index.ts                  # Module entry (re-exports daemon functions)
 ├── src/
-│   ├── config.ts         # Config manager (~/.irsyadulibad/servermon/)
-│   ├── monitor.ts        # Metrics collector (CPU, RAM, disk, net, temp, procs)
-│   └── reporter.ts       # HTML formatter & Telegram sender
+│   ├── types/                # Shared type definitions
+│   │   └── index.ts
+│   ├── config/               # Config CRUD (load, save, delete, listServers)
+│   │   └── index.ts
+│   ├── monitor/              # Metrics collector + formatting utilities
+│   │   └── index.ts
+│   ├── reporter/             # HTML formatter & Telegram sender
+│   │   └── index.ts
+│   ├── daemon/               # start(), startAll(), autoDetectChatId()
+│   │   └── index.ts
+│   └── cli/                  # CLI command routing + interactive setup + banner
+│       ├── banner.ts
+│       └── index.ts
 ├── eslint.config.js
 ├── .prettierrc
 ├── package.json
@@ -157,9 +217,21 @@ Stored at `~/.irsyadulibad/servermon/config.json`:
 }
 ```
 
-- `token` — Telegram bot token (required)
-- `interval` — seconds between reports, min: 30 (default: 300)
-- `chatId` — auto-detected on first run, persisted for subsequent runs
+For named servers, configs are stored separately:
+
+```
+~/.irsyadulibad/servermon/
+├── config.json          # default server
+├── config-prod.json     # servermon setup --name prod
+└── config-staging.json  # servermon setup --name staging
+```
+
+| Field      | Description                                                |
+| ---------- | ---------------------------------------------------------- |
+| `token`    | Telegram bot token (required)                              |
+| `interval` | Seconds between reports (min: 30, default: 300)            |
+| `chatId`   | Auto-detected on first run, persisted for subsequent runs  |
+| `name`     | Server name label (set via `--name`, shown in reports)     |
 
 ---
 
@@ -167,6 +239,14 @@ Stored at `~/.irsyadulibad/servermon/config.json`:
 
 ```bash
 # After installing globally
+servermon install-service
+```
+
+This creates a user-level systemd service at `~/.config/systemd/user/servermon.service` that runs `servermon start` (multi-server mode) and automatically restarts on failure.
+
+### Manual (if you prefer):
+
+```bash
 sudo tee /etc/systemd/system/servermon.service << 'EOF'
 [Unit]
 Description=Server Monitor Daemon
@@ -174,7 +254,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/root/.bun/bin/servermon
+ExecStart=/home/irsyad/.bun/bin/servermon start
 Restart=always
 RestartSec=10
 
@@ -190,7 +270,7 @@ sudo systemctl enable --now servermon
 
 ## 🛠 Built With
 
-- [Bun](https://bun.com) — fast all-in-one JavaScript runtime
+- [Bun](https://bun.sh) — fast all-in-one JavaScript runtime
 - [TypeScript](https://www.typescriptlang.org/) — type safety
 - [Telegram Bot API](https://core.telegram.org/bots/api) — message delivery
 - [ESLint](https://eslint.org/) + [Prettier](https://prettier.io/) — code quality
