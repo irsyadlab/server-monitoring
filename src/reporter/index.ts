@@ -1,11 +1,14 @@
-import { formatBytes, formatRate, formatUptime, type SystemMetrics } from "./monitor";
+import type { SystemMetrics } from "../types";
+import { collectMetrics, formatBytes, formatRate, formatUptime } from "../monitor";
 
-// HTML escape
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Bar chart with inline colored blocks
 function bar(percent: number, w = 10): string {
   const filled = Math.min(w, Math.max(0, Math.round((percent / 100) * w)));
   const empty = w - filled;
@@ -17,13 +20,16 @@ function pad(n: number, dp = 1): string {
   return n.toFixed(dp).padStart(5);
 }
 
-// Overall health
 function healthTag(m: SystemMetrics): string {
   const d = m.disks.length ? Math.max(...m.disks.map((x) => x.usagePercent)) : 0;
   if (m.cpu.usagePercent > 85 || m.memory.usagePercent > 95 || d > 95) return "🚨 CRITICAL";
   if (m.cpu.usagePercent > 70 || m.memory.usagePercent > 85 || d > 85) return "⚠️ WARNING";
   return "✅ HEALTHY";
 }
+
+/* ------------------------------------------------------------------ */
+/*  Formatter                                                          */
+/* ------------------------------------------------------------------ */
 
 export function formatReportHTML(m: SystemMetrics, serverName?: string): string {
   const now = new Date().toLocaleString("id-ID", {
@@ -38,20 +44,17 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
   const tempStr = m.temperature !== null ? `  🌡 ${m.temperature.toFixed(0)}°C` : "";
   const nameTag = serverName ? `  [${esc(serverName)}]` : "";
 
-  // ── Header ──
   const header = [
     `<b>🖥  ${esc(m.hostname)}</b>${nameTag}  —  ${healthTag(m)}`,
     `📅 ${esc(now)}  │  ⏱ ${esc(formatUptime(m.uptime))}${tempStr}`,
     `🐧 ${esc(m.platform)} ${esc(m.arch)}  │  ${esc(m.cpu.model)}  (${m.cpu.cores}c)`,
   ];
 
-  // ── CPU card ──
   const cpu = [
     `<b>💻 CPU</b>  <code>${pad(m.cpu.usagePercent)}%</code>  ${bar(m.cpu.usagePercent)}`,
     `   Load: <code>${m.cpu.loadAvg["1min"].toFixed(2)}</code> / <code>${m.cpu.loadAvg["5min"].toFixed(2)}</code> / <code>${m.cpu.loadAvg["15min"].toFixed(2)}</code>`,
   ];
 
-  // ── Memory card ──
   const mem = [
     `<b>🧠 RAM</b>   <code>${pad(m.memory.usagePercent)}%</code>  ${bar(m.memory.usagePercent)}`,
     `   <code>${esc(formatBytes(m.memory.used))}</code> / <code>${esc(formatBytes(m.memory.total))}</code>`,
@@ -60,7 +63,6 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
       : "",
   ].filter(Boolean);
 
-  // ── Disk card ──
   const disks = [`<b>💾 DISK</b>`];
   for (const d of m.disks) {
     disks.push(
@@ -71,13 +73,11 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
     );
   }
 
-  // ── Network card ──
   const net = [
     `<b>🌐 NET</b>`,
     `   ↓ <code>${esc(formatRate(m.network.rxRate))}</code>   ↑ <code>${esc(formatRate(m.network.txRate))}</code>`,
   ];
 
-  // ── Top processes ──
   const procLines: string[] = [];
   if (m.topProcs.length > 0) {
     procLines.push(`<b>📊 TOP PROCESSES</b>`);
@@ -88,7 +88,6 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
     }
   }
 
-  // ── Alerts ──
   const alerts: string[] = [];
   if (m.cpu.usagePercent > 85) alerts.push(`🔴 CPU tinggi: ${m.cpu.usagePercent.toFixed(1)}%`);
   if (m.memory.usagePercent > 90)
@@ -99,10 +98,7 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
     if (d.usagePercent > 90)
       alerts.push(`🔴 Disk <code>${esc(d.mount)}</code>: ${d.usagePercent}%`);
   }
-
-  if (alerts.length > 0) {
-    alerts.unshift(`<b>⚠️ ALERTS</b>`);
-  }
+  if (alerts.length > 0) alerts.unshift(`<b>⚠️ ALERTS</b>`);
 
   return [
     ...header,
@@ -122,6 +118,10 @@ export function formatReportHTML(m: SystemMetrics, serverName?: string): string 
     .filter(Boolean)
     .join("\n");
 }
+
+/* ------------------------------------------------------------------ */
+/*  Telegram sender                                                    */
+/* ------------------------------------------------------------------ */
 
 async function sendMessage(botToken: string, chatId: string, text: string): Promise<Response> {
   return fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -146,7 +146,7 @@ export async function sendReport(
     return false;
   }
 
-  const m = await import("./monitor").then((x) => x.collectMetrics());
+  const m = await collectMetrics();
   const report = formatReportHTML(m, serverName);
 
   // Telegram 4096 char limit — split on double newlines

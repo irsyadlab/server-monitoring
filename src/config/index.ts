@@ -2,23 +2,33 @@ import { homedir } from "os";
 import { join } from "path";
 import { mkdir, readdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
+import type { ServerMonConfig } from "../types";
 
 const CONFIG_DIR = join(homedir(), ".irsyadulibad", "servermon");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
-export interface ServerMonConfig {
-  token: string;
-  interval: number;
-  chatId?: string;
-  name?: string;
-}
-
-export async function ensureConfigDir(): Promise<void> {
-  await mkdir(CONFIG_DIR, { recursive: true });
-}
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 export function configFile(name?: string): string {
   return name ? join(CONFIG_DIR, `config-${name}.json`) : CONFIG_FILE;
+}
+
+export function configPath(name?: string): string {
+  return configFile(name);
+}
+
+export function configDir(): string {
+  return CONFIG_DIR;
+}
+
+/* ------------------------------------------------------------------ */
+/*  CRUD                                                               */
+/* ------------------------------------------------------------------ */
+
+export async function ensureConfigDir(): Promise<void> {
+  await mkdir(CONFIG_DIR, { recursive: true });
 }
 
 export async function loadConfig(name?: string): Promise<ServerMonConfig | null> {
@@ -26,7 +36,6 @@ export async function loadConfig(name?: string): Promise<ServerMonConfig | null>
     const file = Bun.file(configFile(name));
     if (!(await file.exists())) return null;
     const data = await file.json();
-    // Minimal validation
     if (!data?.token) return null;
     return {
       token: String(data.token),
@@ -44,15 +53,21 @@ export async function saveConfig(config: ServerMonConfig): Promise<void> {
   await Bun.write(configFile(config.name), JSON.stringify(config, null, 2));
 }
 
-export function configPath(name?: string): string {
-  return configFile(name);
+export async function deleteConfig(name?: string): Promise<boolean> {
+  const file = configFile(name);
+  if (!existsSync(file)) return false;
+  try {
+    await unlink(file);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function configDir(): string {
-  return CONFIG_DIR;
-}
+/* ------------------------------------------------------------------ */
+/*  Inventory                                                          */
+/* ------------------------------------------------------------------ */
 
-/** List all named server configs */
 export async function listServers(): Promise<string[]> {
   const names: string[] = [];
   try {
@@ -64,19 +79,6 @@ export async function listServers(): Promise<string[]> {
   } catch {
     // dir may not exist yet
   }
-  // Always include default if exists
   if (existsSync(CONFIG_FILE)) names.unshift("default");
   return names;
-}
-
-/** Delete a server config file */
-export async function deleteConfig(name?: string): Promise<boolean> {
-  const file = configFile(name);
-  if (!existsSync(file)) return false;
-  try {
-    await unlink(file);
-    return true;
-  } catch {
-    return false;
-  }
 }

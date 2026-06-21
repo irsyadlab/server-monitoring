@@ -1,56 +1,41 @@
 import * as os from "os";
+import type { DiskInfo, ProcInfo, SystemMetrics } from "../types";
 
-export interface CPUMetrics {
-  model: string;
-  cores: number;
-  loadAvg: { "1min": number; "5min": number; "15min": number };
-  usagePercent: number;
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GiB`;
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MiB`;
+  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KiB`;
+  return `${bytes} B`;
 }
 
-export interface MemoryMetrics {
-  total: number;
-  used: number;
-  free: number;
-  usagePercent: number;
-  swapTotal: number;
-  swapUsed: number;
-  swapUsagePercent: number;
+export function formatRate(bytesPerSec: number): string {
+  if (bytesPerSec >= 1_048_576) return `${(bytesPerSec / 1_048_576).toFixed(2)} MB/s`;
+  if (bytesPerSec >= 1_024) return `${(bytesPerSec / 1_024).toFixed(1)} KB/s`;
+  return `${bytesPerSec} B/s`;
 }
 
-export interface DiskInfo {
-  mount: string;
-  total: number;
-  used: number;
-  available: number;
-  usagePercent: number;
+export function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
 }
 
-export interface NetworkMetrics {
-  rxRate: number; // bytes/sec
-  txRate: number;
-  rxTotal: number;
-  txTotal: number;
+function cpuTicks(stat: string): number[] {
+  return stat.split(/\s+/).slice(1).map(Number);
 }
 
-export interface ProcInfo {
-  pid: number;
-  name: string;
-  cpuPercent: number;
-  memPercent: number;
-}
-
-export interface SystemMetrics {
-  hostname: string;
-  platform: string;
-  arch: string;
-  uptime: number;
-  cpu: CPUMetrics;
-  memory: MemoryMetrics;
-  disks: DiskInfo[];
-  network: NetworkMetrics;
-  topProcs: ProcInfo[];
-  temperature: number | null; // celsius
-}
+/* ------------------------------------------------------------------ */
+/*  Low-level collectors                                               */
+/* ------------------------------------------------------------------ */
 
 async function exec(cmd: string): Promise<string> {
   const proc = Bun.spawn(["bash", "-c", cmd], { stdout: "pipe" });
@@ -77,9 +62,7 @@ async function readNetDev(): Promise<{ rx: number; tx: number }> {
   for (const line of data.split("\n")) {
     if (!line.includes(":")) continue;
     const ifname = line.split(":")[0]!.trim();
-    // Skip loopback
     if (ifname === "lo") continue;
-    // Skip veth, docker
     if (ifname.startsWith("veth") || ifname.startsWith("docker") || ifname.startsWith("br-"))
       continue;
     const parts = line.split(":")[1]!.trim().split(/\s+/);
@@ -95,14 +78,6 @@ async function readTemperature(): Promise<number | null> {
       `for z in /sys/class/thermal/thermal_zone*/temp; do [ -r "$z" ] && echo "$z=$(cat "$z")"; done 2>/dev/null`
     );
     if (!zones) return null;
-    let best = Number.MAX_VALUE;
-    for (const line of zones.split("\n")) {
-      const val = parseInt(line.split("=")[1]!);
-      // thermal_zone0 often the CPU package; pick the highest non-zero temp
-      if (val > 0 && val < best) best = val;
-      // Actually we want the HIGHEST, not lowest
-    }
-    // Reread — pick highest
     let highest = -Infinity;
     for (const line of zones.split("\n")) {
       const val = parseInt(line.split("=")[1]!);
@@ -113,6 +88,10 @@ async function readTemperature(): Promise<number | null> {
     return null;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Public API                                                         */
+/* ------------------------------------------------------------------ */
 
 export async function collectMetrics(): Promise<SystemMetrics> {
   // --- disk ---
@@ -141,9 +120,6 @@ export async function collectMetrics(): Promise<SystemMetrics> {
   await new Promise((r) => setTimeout(r, 500));
   const stat2 = await exec("cat /proc/stat | grep '^cpu '");
 
-  function cpuTicks(stat: string): number[] {
-    return stat.split(/\s+/).slice(1).map(Number);
-  }
   const t1 = cpuTicks(stat1);
   const t2 = cpuTicks(stat2);
   let usagePercent = 0;
@@ -161,7 +137,7 @@ export async function collectMetrics(): Promise<SystemMetrics> {
   const net1 = await readNetDev();
   await new Promise((r) => setTimeout(r, 1000));
   const net2 = await readNetDev();
-  const rxRate = Math.max(0, net2.rx - net1.rx); // bytes/sec
+  const rxRate = Math.max(0, net2.rx - net1.rx);
   const txRate = Math.max(0, net2.tx - net1.tx);
 
   // --- top processes ---
@@ -209,28 +185,4 @@ export async function collectMetrics(): Promise<SystemMetrics> {
     topProcs,
     temperature,
   };
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GiB`;
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MiB`;
-  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KiB`;
-  return `${bytes} B`;
-}
-
-export function formatRate(bytesPerSec: number): string {
-  if (bytesPerSec >= 1_048_576) return `${(bytesPerSec / 1_048_576).toFixed(2)} MB/s`;
-  if (bytesPerSec >= 1_024) return `${(bytesPerSec / 1_024).toFixed(1)} KB/s`;
-  return `${bytesPerSec} B/s`;
-}
-
-export function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
-  if (h > 0) parts.push(`${h}h`);
-  parts.push(`${m}m`);
-  return parts.join(" ");
 }
