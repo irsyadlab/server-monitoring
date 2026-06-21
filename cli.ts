@@ -195,30 +195,39 @@ async function main() {
   }
 
   if (cmd === "start") {
-    banner();
     const name = parseFlag(process.argv, "--name") || undefined;
-    const config = await loadConfig(name);
-    if (!config) {
-      console.error(name
-        ? `❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`
-        : "❌ No config found. Run `servermon setup` first.");
-      process.exit(1);
+
+    if (name) {
+      // Single server mode
+      banner();
+      const config = await loadConfig(name);
+      if (!config) {
+        console.error(`❌ No config found for server "${name}". Run \`servermon setup --name ${name}\` first.`);
+        process.exit(1);
+      }
+      process.env["TELEGRAM_BOT_TOKEN"] = config.token;
+      process.env["MONITOR_INTERVAL"] = String(config.interval);
+      if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
+      if (config.name) process.env["SERVER_NAME"] = config.name;
+
+      console.log(`📁 Config: ${configPath(config.name)}`);
+      console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
+      if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
+      if (config.name) console.log(`🏷  Name:   ${config.name}`);
+      console.log();
+
+      const { start } = await import("./index.ts");
+      await start();
+    } else {
+      // Multi-server mode — run ALL configured servers
+      banner();
+      console.log("  🌐 Multi-server mode — monitoring all configured servers");
+      console.log();
+      const { startAll } = await import("./index.ts");
+      await startAll();
     }
-    process.env["TELEGRAM_BOT_TOKEN"] = config.token;
-    process.env["MONITOR_INTERVAL"] = String(config.interval);
-    if (config.chatId) process.env["TELEGRAM_CHAT_ID"] = config.chatId;
-    if (config.name) process.env["SERVER_NAME"] = config.name;
-
-    console.log(`📁 Config: ${configPath(config.name)}`);
-    console.log(`📡 Bot:    ...${config.token.slice(-8)}`);
-    if (config.chatId) console.log(`💬 Chat:   ${config.chatId}`);
-    console.log();
-
-    const { start } = await import("./index.ts");
-    await start();
     return;
   }
-
   if (cmd === "report") {
     const name = parseFlag(process.argv, "--name") || undefined;
     const config = await loadConfig(name);
