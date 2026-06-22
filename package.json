@@ -1,6 +1,6 @@
 {
   "name": "@irsyadulibad/servermon",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "description": "Lightweight server monitoring daemon — collects system metrics and sends structured reports to Telegram. Built with Bun + TypeScript.",
   "module": "index.ts",
   "type": "module",
@@ -34,9 +34,6 @@
     "eslint-config-prettier": "^10",
     "prettier": "^3",
     "typescript-eslint": "^8"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   },
   "dependencies": {
     "@crustjs/core": "^0.0.19",
