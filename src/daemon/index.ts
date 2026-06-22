@@ -97,7 +97,7 @@ export async function start(): Promise<void> {
     await persistChatId(chatId, serverName || undefined);
   }
 
-  console.log(`⏱  Interval: ${intervalSec}s (${(intervalSec / 60).toFixed(0)} menit)`);
+  console.log(`⏱  Interval: ${intervalSec}s (${(intervalSec / 60).toFixed(0)} min)`);
   console.log(`📡 Bot:      ...${botToken.slice(-8)}`);
   console.log(`💬 Chat:     ${chatId}`);
   if (serverName) console.log(`🏷  Server:   ${serverName}`);
@@ -170,22 +170,29 @@ export async function startAll(): Promise<void> {
   }
 
   console.log();
-  console.log(`🔄 Monitoring ${configs.length} server(s) — reports every ${intervalSec}s`);
+  console.log(`🔄 Monitoring ${configs.length} server(s) — each with its own interval`);
+  for (const { name, cfg } of configs) {
+    const label = (cfg.interval ?? 300) >= 3600
+      ? `${((cfg.interval ?? 300) / 3600).toFixed(0)} hr`
+      : `${((cfg.interval ?? 300) / 60).toFixed(0)} min`;
+    console.log(`   • ${name} → every ${label}`);
+  }
   console.log();
 
-  async function tickAll() {
+  async function tickOne(cfg: NamedConfig["cfg"], name: string) {
+    if (!cfg.chatId) return;
+    const start2 = Date.now();
+    const ok = await sendReport(cfg.token, cfg.chatId, name === "default" ? undefined : name);
+    const elapsed = Date.now() - start2;
     const ts = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-    for (const { name, cfg } of configs) {
-      if (!cfg.chatId) continue;
-      const start2 = Date.now();
-      const ok = await sendReport(cfg.token, cfg.chatId, name === "default" ? undefined : name);
-      const elapsed = Date.now() - start2;
-      console.log(`[${ts}] ${ok ? "✅" : "❌"} ${name} — ${elapsed}ms`);
-    }
+    console.log(`[${ts}] ${ok ? "✅" : "❌"} ${name} — ${elapsed}ms`);
   }
 
-  await tickAll();
-  setInterval(tickAll, intervalSec * 1000);
+  // Fire immediate tick + schedule each server with its own interval
+  for (const { name, cfg } of configs) {
+    tickOne(cfg, name);
+    setInterval(() => tickOne(cfg, name), (cfg.interval ?? 300) * 1000);
+  }
 
   process.on("SIGINT", () => {
     console.log("\n👋 Shutting down...");
