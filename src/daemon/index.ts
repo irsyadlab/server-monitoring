@@ -172,9 +172,10 @@ export async function startAll(): Promise<void> {
   console.log();
   console.log(`🔄 Monitoring ${configs.length} server(s) — each with its own interval`);
   for (const { name, cfg } of configs) {
-    const label = (cfg.interval ?? 300) >= 3600
-      ? `${((cfg.interval ?? 300) / 3600).toFixed(0)} hr`
-      : `${((cfg.interval ?? 300) / 60).toFixed(0)} min`;
+    const label =
+      (cfg.interval ?? 300) >= 3600
+        ? `${((cfg.interval ?? 300) / 3600).toFixed(0)} hr`
+        : `${((cfg.interval ?? 300) / 60).toFixed(0)} min`;
     console.log(`   • ${name} → every ${label}`);
   }
   console.log();
