@@ -19,12 +19,23 @@ import { collectMetrics } from "../monitor";
 import { layout, layoutError, metricsFragment } from "../views";
 import type { SystemMetrics } from "../types";
 import pkg from "../../package.json";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
 const APP_VERSION = pkg.version;
+
+// Resolve icon relative to this file so it works from any cwd
+const ICON_SVG = (() => {
+  try {
+    return readFileSync(join(import.meta.dir, "../../assets/icon.svg"), "utf-8");
+  } catch {
+    return null;
+  }
+})();
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -51,6 +62,12 @@ function createDashboardApp(port: number): Elysia {
         const msg = err instanceof Error ? err.message : String(err);
         return layoutError(`Failed to collect metrics: ${msg}`);
       }
+    })
+    .get("/_dashboard/icon.svg", () => {
+      if (!ICON_SVG) return new Response("Not found", { status: 404 });
+      return new Response(ICON_SVG, {
+        headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" },
+      });
     })
     .get("/_dashboard/metrics", async () => {
       try {

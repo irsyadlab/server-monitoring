@@ -272,6 +272,7 @@ export function layout(metrics: SystemMetrics, port: number, version: string): s
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ServerMon — ${esc(hostname)}</title>
+  <link rel="icon" type="image/svg+xml" href="/_dashboard/icon.svg"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>

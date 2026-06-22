@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 140" width="560" height="140" role="img" aria-label="servermon logo">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#34d399" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0.3"/>
+    </linearGradient>
+    <filter id="ledGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlow" x="-5%" y="-20%" width="110%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="bounds">
+      <rect width="560" height="140" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="560" height="140" rx="14" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow top-left -->
+  <ellipse cx="80" cy="30" rx="90" ry="50" fill="#34d399" opacity="0.04"/>
+
+  <!-- Border -->
+  <rect width="560" height="140" rx="14" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- ── Server rack icon ─────────────────────────────────────── -->
+
+  <!-- Server unit 1 -->
+  <rect x="28" y="32" width="76" height="20" rx="4" fill="#0c1628" stroke="#1e293b" stroke-width="1.2"/>
+  <rect x="34" y="37" width="28" height="4" rx="2" fill="#1e293b"/>
+  <rect x="34" y="43" width="16" height="2" rx="1" fill="#0f2235"/>
+  <rect x="76" y="36" width="8" height="8" rx="1.5" fill="#0f2235" stroke="#1e293b" stroke-width="1"/>
+  <circle cx="91" cy="42" r="4.5" fill="#34d399" filter="url(#ledGlow)" opacity="0.9"/>
+
+  <!-- Server unit 2 -->
+  <rect x="28" y="58" width="76" height="20" rx="4" fill="#0c1628" stroke="#1e293b" stroke-width="1.2"/>
+  <rect x="34" y="63" width="28" height="4" rx="2" fill="#1e293b"/>
+  <rect x="34" y="69" width="16" height="2" rx="1" fill="#0f2235"/>
+  <rect x="76" y="62" width="8" height="8" rx="1.5" fill="#0f2235" stroke="#1e293b" stroke-width="1"/>
+  <circle cx="91" cy="68" r="4.5" fill="#34d399" filter="url(#ledGlow)" opacity="0.9"/>
+
+  <!-- Server unit 3 -->
+  <rect x="28" y="84" width="76" height="20" rx="4" fill="#0c1628" stroke="#1e293b" stroke-width="1.2"/>
+  <rect x="34" y="89" width="28" height="4" rx="2" fill="#1e293b"/>
+  <rect x="34" y="95" width="16" height="2" rx="1" fill="#0f2235"/>
+  <rect x="76" y="88" width="8" height="8" rx="1.5" fill="#0f2235" stroke="#1e293b" stroke-width="1"/>
+  <circle cx="91" cy="94" r="4.5" fill="#60a5fa" filter="url(#ledGlow)" opacity="0.7"/>
+
+  <!-- Rack rail lines -->
+  <line x1="28" y1="32" x2="28" y2="104" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/>
+  <line x1="104" y1="32" x2="104" y2="104" stroke="#1e293b" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- ── Vertical divider ─────────────────────────────────────── -->
+  <line x1="124" y1="24" x2="124" y2="116" stroke="#1e293b" stroke-width="1.2"/>
+
+  <!-- ── Pulse line (above text, decorative) ─────────────────── -->
+  <polyline
+    points="140,46 158,46 165,34 175,58 183,42 191,46 202,46 210,46 216,43 222,49 228,46 248,46"
+    fill="none"
+    stroke="url(#pulseGrad)"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Pulse dot -->
+  <circle cx="248" cy="46" r="2.5" fill="#34d399" opacity="0.8" filter="url(#ledGlow)"/>
+
+  <!-- ── Main title ───────────────────────────────────────────── -->
+  <text
+    x="140" y="95"
+    font-family="ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Courier New', monospace"
+    font-size="48"
+    font-weight="700"
+    fill="#f1f5f9"
+    letter-spacing="-1.5"
+  >servermon</text>
+
+  <!-- ── Tagline ─────────────────────────────────────────────── -->
+  <text
+    x="141" y="118"
+    font-family="ui-monospace, 'SF Mono', Consolas, monospace"
+    font-size="11"
+    fill="#475569"
+    letter-spacing="1.2"
+  >SERVER MONITORING  ·  TELEGRAM  ·  BUN + TYPESCRIPT</text>
+
+  <!-- ── Version / status badge ──────────────────────────────── -->
+  <rect x="477" y="14" width="66" height="18" rx="9" fill="#052e16" stroke="#166534" stroke-width="1"/>
+  <circle cx="489" cy="23" r="3" fill="#34d399" opacity="0.9"/>
+  <text
+    x="495" y="27"
+    font-family="ui-monospace, 'SF Mono', monospace"
+    font-size="9"
+    fill="#34d399"
+    font-weight="600"
+    letter-spacing="0.5"
+  >HEALTHY</text>
+</svg>

@@ -1,4 +1,6 @@
-# 🖥 Server Monitor
+<p align="center">
+  <img src="assets/logo.svg" alt="servermon" width="520"/>
+</p>
 
 > **Lightweight server watchdog** — collects real-time system metrics and sends structured reports to Telegram.
 > Global CLI tool. Install once, run anywhere. Built with Bun + TypeScript.

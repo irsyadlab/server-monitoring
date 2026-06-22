@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="servermon icon">
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#162032"/>
+      <stop offset="100%" stop-color="#060d18"/>
+    </radialGradient>
+    <linearGradient id="railGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0d1e30"/>
+    </linearGradient>
+    <linearGradient id="serverFace" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d1e32"/>
+      <stop offset="100%" stop-color="#09162a"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="200" height="200" rx="40" fill="url(#bg)"/>
+
+  <!-- Ambient glow top-left -->
+  <ellipse cx="55" cy="45" rx="80" ry="65" fill="#34d399" opacity="0.05"/>
+
+  <!-- ── Rack rails ───────────────────────────────────────────── -->
+  <rect x="40" y="36" width="7" height="106" rx="3.5" fill="url(#railGrad)"/>
+  <rect x="153" y="36" width="7" height="106" rx="3.5" fill="url(#railGrad)"/>
+
+  <!-- ── Server unit 1 ───────────────────────────────────────── -->
+  <rect x="47" y="40" width="106" height="26" rx="5" fill="url(#serverFace)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <!-- Disk/vent slots -->
+  <rect x="56" y="47" width="44" height="5" rx="2.5" fill="#07111f"/>
+  <rect x="56" y="54" width="30" height="4" rx="2" fill="#07111f"/>
+  <!-- Screw corners -->
+  <circle cx="52" cy="43" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="43" r="1.5" fill="#1a304d"/>
+  <circle cx="52" cy="63" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="63" r="1.5" fill="#1a304d"/>
+  <!-- LED -->
+  <circle cx="140" cy="53" r="5.5" fill="#34d399" filter="url(#glow)"/>
+  <circle cx="140" cy="53" r="2.5" fill="#d1fae5"/>
+
+  <!-- ── Server unit 2 ───────────────────────────────────────── -->
+  <rect x="47" y="74" width="106" height="26" rx="5" fill="url(#serverFace)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="56" y="81" width="44" height="5" rx="2.5" fill="#07111f"/>
+  <rect x="56" y="88" width="30" height="4" rx="2" fill="#07111f"/>
+  <circle cx="52" cy="77" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="77" r="1.5" fill="#1a304d"/>
+  <circle cx="52" cy="97" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="97" r="1.5" fill="#1a304d"/>
+  <circle cx="140" cy="87" r="5.5" fill="#34d399" filter="url(#glow)"/>
+  <circle cx="140" cy="87" r="2.5" fill="#d1fae5"/>
+
+  <!-- ── Server unit 3 ───────────────────────────────────────── -->
+  <rect x="47" y="108" width="106" height="26" rx="5" fill="url(#serverFace)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="56" y="115" width="44" height="5" rx="2.5" fill="#07111f"/>
+  <rect x="56" y="122" width="20" height="4" rx="2" fill="#07111f"/>
+  <circle cx="52" cy="111" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="111" r="1.5" fill="#1a304d"/>
+  <circle cx="52" cy="131" r="1.5" fill="#1a304d"/>
+  <circle cx="149" cy="131" r="1.5" fill="#1a304d"/>
+  <!-- Blue LED (secondary service) -->
+  <circle cx="140" cy="121" r="5.5" fill="#60a5fa" filter="url(#glow)" opacity="0.75"/>
+  <circle cx="140" cy="121" r="2.5" fill="#bfdbfe"/>
+
+  <!-- ── Heartbeat / pulse line ──────────────────────────────── -->
+  <!-- Flat lead-in → spike → flat tail -->
+  <polyline
+    points="40,158  62,158  70,142  81,174  90,152  99,158  160,158"
+    fill="none"
+    stroke="#34d399"
+    stroke-width="2.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#glow)"
+  />
+  <!-- Glowing tip dot -->
+  <circle cx="160" cy="158" r="4" fill="#34d399" filter="url(#glow)"/>
+  <circle cx="160" cy="158" r="2" fill="#d1fae5"/>
+</svg>

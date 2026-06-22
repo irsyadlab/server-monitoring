@@ -66,9 +66,95 @@ async function interactiveSetup(name?: string): Promise<void> {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  App definition                                                     */
-/* ------------------------------------------------------------------ */
+async function interactiveUpdate(name?: string): Promise<void> {
+  // ── Pick server if not specified ─────────────────────────────────
+  let targetName = name;
+  if (!targetName) {
+    const servers = await listServers();
+    if (servers.length === 0) {
+      console.error("❌ No configured servers. Run `servermon setup` first.");
+      process.exit(1);
+    }
+
+    console.log("📋 Select a server to update:");
+    servers.forEach((s, i) => console.log(`   ${i + 1}. ${s}`));
+    const pick = prompt(`\n   Pick [1-${servers.length}]: `)?.trim();
+    const idx = parseInt(pick ?? "") - 1;
+    if (isNaN(idx) || idx < 0 || idx >= servers.length) {
+      console.error("❌ Invalid selection.");
+      process.exit(1);
+    }
+    targetName = servers[idx];
+  }
+
+  const key = targetName === "default" ? undefined : targetName;
+  const current = await loadConfig(key);
+  if (!current) {
+    console.error(`❌ No config found for server "${targetName}".`);
+    process.exit(1);
+  }
+
+  const tag = targetName !== "default" ? ` [${targetName}]` : "";
+  console.log(`\n🖥  Update Config${tag}`);
+  console.log(`   📁 ${configPath()}\n`);
+
+  // ── Token ────────────────────────────────────────────────────────
+  const tokenInput = prompt("🔑 Telegram Bot Token (leave empty to keep current): ")?.trim();
+  let token = current.token;
+  if (tokenInput) {
+    if (!tokenInput.includes(":")) {
+      console.error("❌ Invalid bot token format. Should look like: 123456:ABC-DEF1234gh...");
+      process.exit(1);
+    }
+    token = tokenInput;
+  }
+
+  // ── Interval ─────────────────────────────────────────────────────
+  const currentLabel =
+    current.interval >= 3600
+      ? `${(current.interval / 3600).toFixed(0)}h`
+      : `${(current.interval / 60).toFixed(0)}min`;
+
+  console.log(`\n⏱  Choose report interval (current: ${current.interval}s / ${currentLabel}):`);
+  console.log("   1. Every 5 minutes");
+  console.log("   2. Every 1 hour");
+  console.log("   3. Every 3 hours");
+  console.log("   4. Every 6 hours");
+  console.log("   5. Every 12 hours");
+  console.log("   6. Custom (in seconds)");
+
+  const choice = prompt("   Pick [1-6] (leave empty to keep current): ")?.trim();
+
+  const intervalMap: Record<string, number> = {
+    "1": 300,
+    "2": 3600,
+    "3": 10800,
+    "4": 21600,
+    "5": 43200,
+  };
+
+  let interval = current.interval;
+  if (choice === "6") {
+    const custom = prompt("   Enter interval in seconds: ")?.trim();
+    interval = Math.max(30, parseInt(custom || String(current.interval)) || current.interval);
+  } else if (choice && intervalMap[choice]) {
+    interval = intervalMap[choice];
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────
+  await saveConfig({ token, interval, chatId: current.chatId, name: key });
+
+  const newLabel =
+    interval >= 3600
+      ? `${(interval / 3600).toFixed(0)} hour(s)`
+      : `${(interval / 60).toFixed(0)} min`;
+
+  console.log(`\n✅ Config updated!`);
+  console.log(`   📁 ${configPath()}`);
+  if (tokenInput) console.log(`   🔑 Token:    updated`);
+  console.log(`   ⏱  Interval: ${interval}s (${newLabel})`);
+  console.log(`\n💡 Restart the daemon to apply changes: \`servermon service restart\``);
+}
 
 export function createApp(): Crust {
   const app = new Crust("servermon")
@@ -95,6 +181,13 @@ export function createApp(): Crust {
           await interactiveSetup(flags.name);
         })
     )
+    /* ---- update ---- */
+    .command("update", (cmd) =>
+      cmd.meta({ description: "Update config for a configured server" }).run(async ({ flags }) => {
+        await interactiveUpdate(flags.name);
+      })
+    )
+
     /* ---- start ---- */
     .command("start", (cmd) =>
       cmd.meta({ description: "Start the monitoring daemon" }).run(async ({ flags }) => {
