@@ -5,15 +5,22 @@
   "module": "index.ts",
   "type": "module",
   "bin": {
-    "servermon": "bin.js"
+    "servermon": "dist/bin.js"
   },
+  "files": [
+    "dist/bin.js",
+    "index.ts",
+    "README.md"
+  ],
   "private": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "start": "bun index.ts",
-    "build": "bun build --compile index.ts --outfile server-monitor",
+    "build": "bun build --compile cli.ts --outfile server-monitor",
+    "build:bundle": "bun build cli.ts --outfile dist/bin.js --target bun",
+    "prepublishOnly": "bun run build:bundle",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
