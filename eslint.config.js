@@ -7,7 +7,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   prettier,
   {
-    ignores: ["node_modules/", "server-monitor", "*.js"],
+    ignores: ["node_modules/", "server-monitor", "dist/", "*.js"],
   },
   {
     rules: {

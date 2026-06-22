@@ -12,7 +12,11 @@ if (typeof Bun !== "undefined") {
   if (!Bun.stripANSI) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (Bun as any).stripANSI = (str: string) => {
-      return str.replace(/\x1B\[[\d;]*[A-Za-z]/g, "").replace(/\x1B[[\]()#;?]*(?:\d+(?:;\d[^\x07]*)?(?:\x07|[\x1B\\]))/g, ""); // eslint-disable-line no-control-regex
+      /* eslint-disable no-control-regex */
+      return str
+        .replace(/\x1B\[[\d;]*[A-Za-z]/g, "")
+        .replace(/\x1B[[\]()#;?]*(?:\d+(?:;\d[^\x07]*)?(?:\x07|[\x1B\\]))/g, "");
+      /* eslint-enable no-control-regex */
     };
   }
   if (!Bun.color) {
